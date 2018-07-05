@@ -2,33 +2,54 @@
 
 namespace Eraple;
 
-/**
- * Class App
- */
 class App
 {
-    /* @var string Application version. */
+    /**
+     * Application version.
+     *
+     * @var string
+     */
     protected $version = '1.0.0';
 
-    /* @var string Application root path. */
+    /**
+     * Application root path.
+     *
+     * @var string
+     */
     protected $rootPath = '';
 
-    /* @var App Application instance. */
+    /**
+     * Application instance.
+     *
+     * @var App
+     */
     protected static $instance;
 
-    /* @var array Registered modules. */
+    /**
+     * Registered modules.
+     *
+     * @var array
+     */
     protected $modules = [];
 
-    /* @var array Registered tasks. */
+    /**
+     * Registered tasks.
+     *
+     * @var array
+     */
     protected $tasks = [];
 
-    /* @var array Registered resources. */
+    /**
+     * Registered resources.
+     *
+     * @var array
+     */
     protected $resources = [];
 
     /**
      * Application constructor.
      *
-     * @param string $rootPath
+     * @param string $rootPath Root path of the application
      */
     public function __construct(string $rootPath)
     {
@@ -39,7 +60,7 @@ class App
     /**
      * Get application global instance.
      *
-     * @param string $rootPath
+     * @param string $rootPath Root path of the application
      *
      * @return App
      */
@@ -79,8 +100,8 @@ class App
     protected function registerModules()
     {
         /* collect local and vendor modules */
-        $localModules = glob($this->localPath() . DIRECTORY_SEPARATOR . '*' . DIRECTORY_SEPARATOR . '*');
-        $vendorModules = glob($this->vendorPath() . DIRECTORY_SEPARATOR . '*' . DIRECTORY_SEPARATOR . '*');
+        $localModules = glob($this->getLocalPath() . '*' . DIRECTORY_SEPARATOR . '*');
+        $vendorModules = glob($this->getVendorPath() . '*' . DIRECTORY_SEPARATOR . '*');
 
         /* register modules */
         foreach (array_merge($localModules, $vendorModules) as $module) {
@@ -105,7 +126,7 @@ class App
     }
 
     /**
-     * Bind module with the application.
+     * Register module with the application.
      *
      * @param string $name Name of the module
      * @param string $class Module class
@@ -116,7 +137,7 @@ class App
     }
 
     /**
-     * Bind task with the application.
+     * Register task with the application.
      *
      * @param string $name Name of the task
      * @param string $class Task class
@@ -146,7 +167,7 @@ class App
         if (!$isBeforeAfterEvent) $data = $this->fireEvent('before_' . $event, $data);
 
         /* run tasks on event */
-        $data = $this->runTasksSequenceByPosition('event_' . $event, $data);
+        $data = $this->runTasksByPosition('event_' . $event, $data);
 
         /* run after event of event */
         if (!$isBeforeAfterEvent) $data = $this->fireEvent('after_' . $event, $data);
@@ -155,21 +176,53 @@ class App
     }
 
     /**
-     * Run all the tasks in sequence.
+     * Run tasks by position.
      *
-     * @param array $task Task
-     * @param array $data Data
+     * @param string $position Position of the task
+     * @param array $data Data passed to the task
      *
      * @return array
      */
-    protected function runTaskSequence(array $task, array $data = [])
+    protected function runTasksByPosition(string $position, array $data = [])
+    {
+        foreach ($this->getTasksByPosition($position) as $task) {
+            $data = array_merge($data, $this->runTask($task, $data));
+        }
+
+        return $data;
+    }
+
+    /**
+     * Get tasks by position.
+     *
+     * @param string $position Position of the task
+     *
+     * @return array
+     */
+    protected function getTasksByPosition(string $position)
+    {
+        $tasks = array_filter($this->tasks, function ($task) use ($position) { return $task['position'] === $position; });
+        usort($tasks, function ($task1, $task2) { return $task1['priority'] < $task2['priority']; });
+
+        return $tasks;
+    }
+
+    /**
+     * Run task with related tasks.
+     *
+     * @param array $task Task to run
+     * @param array $data Data passed to the task
+     *
+     * @return array
+     */
+    protected function runTask(array $task, array $data = [])
     {
         /* replace task */
-        $replaceTasks = $this->findTasksByPosition('replace_' . $task['name']);
+        $replaceTasks = $this->getTasksByPosition('replace_' . $task['name']);
         $task = count($replaceTasks) ? reset($replaceTasks) : $task;
 
         /* run tasks before task */
-        $data = $this->runTasksSequenceByPosition('before_' . $task['name'], $data);
+        $data = $this->runTasksByPosition('before_' . $task['name'], $data);
 
         /* run task */
         /* @var $taskClass Task */
@@ -179,43 +232,9 @@ class App
         $data = array_merge($data, !is_array($returnData) ? [] : $returnData);
 
         /* run tasks after task */
-        $data = $this->runTasksSequenceByPosition('after_' . $task['name'], $data);
+        $data = $this->runTasksByPosition('after_' . $task['name'], $data);
 
         return $data;
-    }
-
-    /**
-     * Run matched tasks.
-     *
-     * @param string $position
-     * @param array $data
-     *
-     * @return array
-     */
-    protected function runTasksSequenceByPosition(string $position, array $data)
-    {
-        /* run tasks to run after event */
-        foreach ($this->findTasksByPosition($position) as $task) {
-            $data = array_merge($data, $this->runTaskSequence($task, $data));
-        }
-
-        return $data;
-    }
-
-    /**
-     * Find matched tasks.
-     *
-     * @param string $position
-     *
-     * @return array
-     */
-    protected function findTasksByPosition(string $position)
-    {
-        /* find tasks tasks to run on event */
-        $tasks = array_filter($this->tasks, function ($task) use ($position) { return $task['position'] === $position; });
-        usort($tasks, function ($task1, $task2) { return $task1['priority'] < $task2['priority']; });
-
-        return $tasks;
     }
 
     /**
@@ -223,9 +242,9 @@ class App
      *
      * @return string
      */
-    public function rootPath()
+    public function getRootPath()
     {
-        return trim($this->rootPath, '/\\');
+        return trim($this->rootPath, '/\\') . DIRECTORY_SEPARATOR;
     }
 
     /**
@@ -233,9 +252,9 @@ class App
      *
      * @return string
      */
-    public function localPath()
+    public function getLocalPath()
     {
-        return $this->rootPath() . DIRECTORY_SEPARATOR . 'local';
+        return $this->getRootPath() . 'local' . DIRECTORY_SEPARATOR;
     }
 
     /**
@@ -243,19 +262,19 @@ class App
      *
      * @return string
      */
-    public function vendorPath()
+    public function getVendorPath()
     {
-        return $this->rootPath() . DIRECTORY_SEPARATOR . 'vendor';
+        return $this->getRootPath() . 'vendor' . DIRECTORY_SEPARATOR;
     }
 
     /**
      * Check whether module is an Eraple module.
      *
-     * @param string $path
+     * @param string $path Module path
      * @return bool
      */
     public function isErapleModule(string $path)
     {
-        return file_exists($path . DIRECTORY_SEPARATOR . 'Module.php');
+        return file_exists(trim($path, '/\\') . DIRECTORY_SEPARATOR . 'Module.php');
     }
 }
