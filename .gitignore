@@ -1,0 +1,8 @@
+/.idea
+/.vscode
+/.vagrant
+/node_modules
+/vendor
+npm-debug.log
+yarn-error.log
+.env
