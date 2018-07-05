@@ -9,7 +9,7 @@ class TaskOne implements Task
 {
     protected $description = 'I will do task one.';
 
-    public static $position = 'before_task-five';
+    public static $position = 'after_task-seven';
 
     public static $priority = 0;
 

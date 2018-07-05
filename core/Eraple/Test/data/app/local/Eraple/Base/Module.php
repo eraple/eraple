@@ -9,6 +9,8 @@ use Eraple\Test\Data\App\Local\Eraple\Base\Task\TaskThree;
 use Eraple\Test\Data\App\Local\Eraple\Base\Task\TaskFour;
 use Eraple\Test\Data\App\Local\Eraple\Base\Task\TaskFive;
 use Eraple\Test\Data\App\Local\Eraple\Base\Task\TaskSix;
+use Eraple\Test\Data\App\Local\Eraple\Base\Task\TaskSeven;
+use Eraple\Test\Data\App\Local\Eraple\Base\Task\TaskEight;
 
 class Module implements \Eraple\Module
 {
@@ -27,6 +29,8 @@ class Module implements \Eraple\Module
         $app->registerTask('task-four', TaskFour::class);
         $app->registerTask('task-five', TaskFive::class);
         $app->registerTask('task-six', TaskSix::class);
+        $app->registerTask('task-seven', TaskSeven::class);
+        $app->registerTask('task-eight', TaskEight::class);
     }
 }
 

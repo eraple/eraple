@@ -142,19 +142,13 @@ class App
         /* check whether its a before or after event */
         $isBeforeAfterEvent = preg_match('/^before_/', $event) || preg_match('/^after_/', $event);
 
-        /* run before event of an event */
+        /* run before event of event */
         if (!$isBeforeAfterEvent) $data = $this->fireEvent('before_' . $event, $data);
 
-        /* find tasks tasks to run on event */
-        $afterTasks = array_filter($this->tasks, function ($afterTask) use ($event) { return $afterTask['position'] === 'event_' . $event; });
-        usort($afterTasks, function ($task1, $task2) { return $task1['priority'] < $task2['priority']; });
+        /* run tasks on event */
+        $data = $this->runTasksSequenceByPosition('event_' . $event, $data);
 
-        /* run tasks to run after event */
-        foreach ($afterTasks as $afterTask) {
-            $data = array_merge($data, $this->runTaskSequence($afterTask, $data));
-        }
-
-        /* run after event of an event */
+        /* run after event of event */
         if (!$isBeforeAfterEvent) $data = $this->fireEvent('after_' . $event, $data);
 
         return $data;
@@ -170,14 +164,12 @@ class App
      */
     protected function runTaskSequence(array $task, array $data = [])
     {
-        /* find tasks to run before task */
-        $beforeTasks = array_filter($this->tasks, function ($beforeTask) use ($task) { return $beforeTask['position'] === 'before_' . $task['name']; });
-        usort($beforeTasks, function ($task1, $task2) { return $task1['priority'] < $task2['priority']; });
+        /* replace task */
+        $replaceTasks = $this->findTasksByPosition('replace_' . $task['name']);
+        $task = count($replaceTasks) ? reset($replaceTasks) : $task;
 
-        /* run tasks to run before task */
-        foreach ($beforeTasks as $beforeTask) {
-            $data = array_merge($data, $this->runTaskSequence($beforeTask, $data));
-        }
+        /* run tasks before task */
+        $data = $this->runTasksSequenceByPosition('before_' . $task['name'], $data);
 
         /* run task */
         /* @var $taskClass Task */
@@ -186,16 +178,44 @@ class App
         $returnData = $taskClass->run($this, $data);
         $data = array_merge($data, !is_array($returnData) ? [] : $returnData);
 
-        /* find tasks to run after task */
-        $afterTasks = array_filter($this->tasks, function ($afterTask) use ($task) { return $afterTask['position'] === 'after_' . $task['name']; });
-        usort($afterTasks, function ($task1, $task2) { return $task1['priority'] < $task2['priority']; });
+        /* run tasks after task */
+        $data = $this->runTasksSequenceByPosition('after_' . $task['name'], $data);
 
-        /* run tasks to run after task */
-        foreach ($afterTasks as $afterTask) {
-            $data = array_merge($data, $this->runTaskSequence($afterTask, $data));
+        return $data;
+    }
+
+    /**
+     * Run matched tasks.
+     *
+     * @param string $position
+     * @param array $data
+     *
+     * @return array
+     */
+    protected function runTasksSequenceByPosition(string $position, array $data)
+    {
+        /* run tasks to run after event */
+        foreach ($this->findTasksByPosition($position) as $task) {
+            $data = array_merge($data, $this->runTaskSequence($task, $data));
         }
 
         return $data;
+    }
+
+    /**
+     * Find matched tasks.
+     *
+     * @param string $position
+     *
+     * @return array
+     */
+    protected function findTasksByPosition(string $position)
+    {
+        /* find tasks tasks to run on event */
+        $tasks = array_filter($this->tasks, function ($task) use ($position) { return $task['position'] === $position; });
+        usort($tasks, function ($task1, $task2) { return $task1['priority'] < $task2['priority']; });
+
+        return $tasks;
     }
 
     /**
