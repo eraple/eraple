@@ -51,7 +51,7 @@ class App
      *
      * @param string $rootPath Root path of the application
      */
-    public function __construct(string $rootPath)
+    public function __construct(string $rootPath = null)
     {
         $this->rootPath = $rootPath;
         self::$instance = $this;
@@ -78,7 +78,7 @@ class App
      *
      * @return string
      */
-    public function version()
+    public function getVersion()
     {
         return $this->version;
     }
@@ -136,10 +136,9 @@ class App
     public function registerModule(string $class)
     {
         /* @var $class Module */
-        $name = $class::getName();
-        if ($this->isValidName($name)) {
-            $this->modules[$name] = $class;
-        }
+        if (!$this->isValidName($class::getName())) return;
+
+        $this->modules[$class::getName()] = $class;
     }
 
     /**
@@ -150,10 +149,9 @@ class App
     public function registerTask(string $class)
     {
         /* @var $class Task */
-        $name = $class::getName();
-        if ($this->isValidName($name)) {
-            $this->tasks[$name] = $class;
-        }
+        if (!$this->isValidName($class::getName())) return;
+
+        $this->tasks[$class::getName()] = $class;
     }
 
     /**
@@ -166,6 +164,9 @@ class App
      */
     public function fireEvent(string $event, array $data = [])
     {
+        /* return if event name is not valid */
+        if (!$this->isValidName($event)) return $data;
+
         /* run tasks before event */
         $data = $this->runTasksByPosition('event_before_' . $event, $data);
 
