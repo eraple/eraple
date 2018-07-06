@@ -58,7 +58,7 @@ class App
     }
 
     /**
-     * Get application global instance.
+     * Get the application global instance.
      *
      * @param string $rootPath Root path of the application
      *
@@ -277,6 +277,13 @@ class App
         return $this->getRootPath() . 'vendor' . DIRECTORY_SEPARATOR;
     }
 
+    /**
+     * Check whether name is valid module and task name.
+     *
+     * @param string $name Module or task name
+     *
+     * @return bool
+     */
     public function isValidName(string $name)
     {
         if (!empty($name) && preg_match('/^[0-9a-z-]{3,255}$/', $name)) {
