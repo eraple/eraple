@@ -160,17 +160,14 @@ class App
      */
     public function fireEvent(string $event, array $data = [])
     {
-        /* check whether its a before or after event */
-        $isBeforeAfterEvent = preg_match('/^before_/', $event) || preg_match('/^after_/', $event);
-
-        /* run before event of event */
-        if (!$isBeforeAfterEvent) $data = $this->fireEvent('before_' . $event, $data);
+        /* run tasks before event */
+        $data = $this->runTasksByPosition('event_before_' . $event, $data);
 
         /* run tasks on event */
         $data = $this->runTasksByPosition('event_' . $event, $data);
 
-        /* run after event of event */
-        if (!$isBeforeAfterEvent) $data = $this->fireEvent('after_' . $event, $data);
+        /* run tasks after event */
+        $data = $this->runTasksByPosition('event_after_' . $event, $data);
 
         return $data;
     }
