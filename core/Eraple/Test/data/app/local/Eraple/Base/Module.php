@@ -31,4 +31,4 @@ class Module extends \Eraple\Module
     }
 }
 
-App::instance()->registerModule(Module::class);
+return Module::class;

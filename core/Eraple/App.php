@@ -105,8 +105,11 @@ class App
 
         /* register modules */
         foreach (array_merge($localModules, $vendorModules) as $module) {
-            if ($this->isErapleModule($module)) {
-                require_once $module . DIRECTORY_SEPARATOR . 'Module.php';
+            $module = trim($module, '/\\') . DIRECTORY_SEPARATOR . 'Module.php';
+
+            /* register module only if it is a valid eraple module */
+            if (file_exists($module) && is_subclass_of($module = require_once $module, Module::class)) {
+                $this->registerModule($module);
             }
         }
     }
@@ -119,7 +122,7 @@ class App
         /* register tasks */
         foreach ($this->modules as $module) {
             /* @var $moduleClass Module */
-            $moduleClass = $module['class'];
+            $moduleClass = $module;
             $moduleClass = new $moduleClass();
             $moduleClass->registerTasks($this);
         }
@@ -135,7 +138,7 @@ class App
         /* @var $class Module */
         $name = $class::getName();
         if ($this->isValidName($name)) {
-            $this->modules[$name] = ['name' => $name, 'class' => $class];
+            $this->modules[$name] = $class;
         }
     }
 
@@ -149,7 +152,7 @@ class App
         /* @var $class Task */
         $name = $class::getName();
         if ($this->isValidName($name)) {
-            $this->tasks[$name] = ['name' => $name, 'class' => $class, 'position' => $class::getPosition(), 'priority' => $class::getPriority()];
+            $this->tasks[$name] = $class;
         }
     }
 
@@ -179,7 +182,7 @@ class App
      * Run tasks by position.
      *
      * @param string $position Position of the task
-     * @param array $data Data passed to the task
+     * @param  array $data Data passed to the task
      *
      * @return array
      */
@@ -201,8 +204,15 @@ class App
      */
     protected function getTasksByPosition(string $position)
     {
-        $tasks = array_filter($this->tasks, function ($task) use ($position) { return $task['position'] === $position; });
-        usort($tasks, function ($task1, $task2) { return $task1['priority'] < $task2['priority']; });
+        $tasks = array_filter($this->tasks, function (string $task) use ($position) {
+            /* @var $task Task */
+            return $task::getPosition() === $position;
+        });
+        usort($tasks, function (string $task1, string $task2) {
+            /* @var $task1 Task */
+            /* @var $task2 Task */
+            return $task1::getPriority() < $task2::getPriority();
+        });
 
         return $tasks;
     }
@@ -210,28 +220,30 @@ class App
     /**
      * Run task with related tasks.
      *
-     * @param array $task Task to run
-     * @param array $data Data passed to the task
+     * @param string $task Task to run
+     * @param  array $data Data passed to the task
      *
      * @return array
      */
-    protected function runTask(array $task, array $data = [])
+    protected function runTask(string $task, array $data = [])
     {
         /* replace task chain */
-        $replaceChainTasks = $this->getTasksByPosition('replace_chain_' . $task['name']);
+        /* @var $task Task */
+        $replaceChainTasks = $this->getTasksByPosition('replace_chain_' . $task::getName());
         $task = count($replaceChainTasks) ? reset($replaceChainTasks) : $task;
 
         /* replace task */
-        $replaceTasks = $this->getTasksByPosition('replace_' . $task['name']);
+        $replaceTasks = $this->getTasksByPosition('replace_' . $task::getName());
         $replacedTask = count($replaceTasks) ? reset($replaceTasks) : $task;
+
         /* @var $taskClass Task */
-        $taskClass = $replacedTask['class'];
+        $taskClass = $replacedTask;
 
         /* run tasks before task */
-        $data = $this->runTasksByPosition('before_' . $task['name'], $data);
+        $data = $this->runTasksByPosition('before_' . $task::getName(), $data);
 
         /* run tasks before replaced task */
-        $data = strcmp($replacedTask['name'], $task['name']) !== 0 ? $this->runTasksByPosition('before_' . $replacedTask['name'], $data) : $data;
+        $data = strcmp($replacedTask::getName(), $task::getName()) !== 0 ? $this->runTasksByPosition('before_' . $replacedTask::getName(), $data) : $data;
 
         /* run task */
         $taskClass = new $taskClass();
@@ -239,10 +251,10 @@ class App
         $data = array_merge($data, !is_array($returnData) ? [] : $returnData);
 
         /* run tasks after replaced task */
-        $data = strcmp($replacedTask['name'], $task['name']) !== 0 ? $this->runTasksByPosition('after_' . $replacedTask['name'], $data) : $data;
+        $data = strcmp($replacedTask::getName(), $task::getName()) !== 0 ? $this->runTasksByPosition('after_' . $replacedTask::getName(), $data) : $data;
 
         /* run tasks after task */
-        $data = $this->runTasksByPosition('after_' . $task['name'], $data);
+        $data = $this->runTasksByPosition('after_' . $task::getName(), $data);
 
         return $data;
     }
@@ -291,16 +303,5 @@ class App
         }
 
         return false;
-    }
-
-    /**
-     * Check whether module is an Eraple module.
-     *
-     * @param string $path Module path
-     * @return bool
-     */
-    public function isErapleModule(string $path)
-    {
-        return file_exists(trim($path, '/\\') . DIRECTORY_SEPARATOR . 'Module.php');
     }
 }
