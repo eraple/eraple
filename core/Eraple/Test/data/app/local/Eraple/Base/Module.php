@@ -12,26 +12,23 @@ use Eraple\Test\Data\App\Local\Eraple\Base\Task\TaskSix;
 use Eraple\Test\Data\App\Local\Eraple\Base\Task\TaskSeven;
 use Eraple\Test\Data\App\Local\Eraple\Base\Task\TaskEight;
 
-class Module implements \Eraple\Module
+class Module extends \Eraple\Module
 {
-    protected $description = 'I will handle the base functions.';
+    protected static $name = 'base';
 
-    public function description()
-    {
-        return $this->description;
-    }
+    protected static $description = 'I will handle the base functions.';
 
     public function registerTasks(App $app)
     {
-        $app->registerTask('task-one', TaskOne::class);
-        $app->registerTask('task-two', TaskTwo::class);
-        $app->registerTask('task-three', TaskThree::class);
-        $app->registerTask('task-four', TaskFour::class);
-        $app->registerTask('task-five', TaskFive::class);
-        $app->registerTask('task-six', TaskSix::class);
-        $app->registerTask('task-seven', TaskSeven::class);
-        $app->registerTask('task-eight', TaskEight::class);
+        $app->registerTask(TaskOne::class);
+        $app->registerTask(TaskTwo::class);
+        $app->registerTask(TaskThree::class);
+        $app->registerTask(TaskFour::class);
+        $app->registerTask(TaskFive::class);
+        $app->registerTask(TaskSix::class);
+        $app->registerTask(TaskSeven::class);
+        $app->registerTask(TaskEight::class);
     }
 }
 
-App::instance()->registerModule('base', Module::class);
+App::instance()->registerModule(Module::class);

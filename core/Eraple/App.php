@@ -128,26 +128,29 @@ class App
     /**
      * Register module with the application.
      *
-     * @param string $name Name of the module
      * @param string $class Module class
      */
-    public function registerModule(string $name, string $class)
+    public function registerModule(string $class)
     {
-        $this->modules[$name] = ['name' => $name, 'class' => $class];
+        /* @var $class Module */
+        $name = $class::getName();
+        if ($this->isValidName($name)) {
+            $this->modules[$name] = ['name' => $name, 'class' => $class];
+        }
     }
 
     /**
      * Register task with the application.
      *
-     * @param string $name Name of the task
      * @param string $class Task class
      */
-    public function registerTask(string $name, string $class)
+    public function registerTask(string $class)
     {
-        $position = !empty($class::$position) ? $class::$position : 'event_before_end';
-        $priority = !empty($class::$priority) ? $class::$priority : 0;
-
-        $this->tasks[$name] = ['name' => $name, 'class' => $class, 'position' => $position, 'priority' => $priority];
+        /* @var $class Task */
+        $name = $class::getName();
+        if ($this->isValidName($name)) {
+            $this->tasks[$name] = ['name' => $name, 'class' => $class, 'position' => $class::getPosition(), 'priority' => $class::getPriority()];
+        }
     }
 
     /**
@@ -228,8 +231,7 @@ class App
         $data = $this->runTasksByPosition('before_' . $task['name'], $data);
 
         /* run tasks before replaced task */
-        $data = strcmp($replacedTask['name'], $task['name']) !== 0
-            ? $this->runTasksByPosition('before_' . $replacedTask['name'], $data) : $data;
+        $data = strcmp($replacedTask['name'], $task['name']) !== 0 ? $this->runTasksByPosition('before_' . $replacedTask['name'], $data) : $data;
 
         /* run task */
         $taskClass = new $taskClass();
@@ -237,8 +239,7 @@ class App
         $data = array_merge($data, !is_array($returnData) ? [] : $returnData);
 
         /* run tasks after replaced task */
-        $data = strcmp($replacedTask['name'], $task['name']) !== 0
-            ? $this->runTasksByPosition('after_' . $replacedTask['name'], $data) : $data;
+        $data = strcmp($replacedTask['name'], $task['name']) !== 0 ? $this->runTasksByPosition('after_' . $replacedTask['name'], $data) : $data;
 
         /* run tasks after task */
         $data = $this->runTasksByPosition('after_' . $task['name'], $data);
@@ -274,6 +275,15 @@ class App
     public function getVendorPath()
     {
         return $this->getRootPath() . 'vendor' . DIRECTORY_SEPARATOR;
+    }
+
+    public function isValidName(string $name)
+    {
+        if (!empty($name) && preg_match('/^[0-9a-z-]{3,255}$/', $name)) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

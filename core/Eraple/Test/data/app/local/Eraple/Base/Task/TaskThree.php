@@ -5,18 +5,15 @@ namespace Eraple\Test\Data\App\Local\Eraple\Base\Task;
 use Eraple\Task;
 use Eraple\App;
 
-class TaskThree implements Task
+class TaskThree extends Task
 {
-    protected $description = 'I will do task three.';
+    protected static $name = 'task-three';
 
-    public static $position = 'event_start';
+    protected static $description = 'I will do task three.';
 
-    public static $priority = 1;
+    protected static $position = 'event_start';
 
-    public function description()
-    {
-        return $this->description;
-    }
+    protected static $priority = 1;
 
     public function run(App $app, array $data = [])
     {

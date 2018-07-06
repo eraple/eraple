@@ -2,9 +2,21 @@
 
 namespace Eraple;
 
-interface Module
+abstract class Module
 {
-    public function description();
+    protected static $name = '';
 
-    public function registerTasks(App $app);
+    protected static $description = 'No description found.';
+
+    public static function getName()
+    {
+        return static::$name;
+    }
+
+    public static function getDescription()
+    {
+        return static::$description;
+    }
+
+    abstract public function registerTasks(App $app);
 }
