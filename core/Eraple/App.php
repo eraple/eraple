@@ -214,19 +214,31 @@ class App
      */
     protected function runTask(array $task, array $data = [])
     {
+        /* replace task chain */
+        $replaceChainTasks = $this->getTasksByPosition('replace_chain_' . $task['name']);
+        $task = count($replaceChainTasks) ? reset($replaceChainTasks) : $task;
+
         /* replace task */
         $replaceTasks = $this->getTasksByPosition('replace_' . $task['name']);
-        $task = count($replaceTasks) ? reset($replaceTasks) : $task;
+        $replacedTask = count($replaceTasks) ? reset($replaceTasks) : $task;
+        /* @var $taskClass Task */
+        $taskClass = $replacedTask['class'];
 
         /* run tasks before task */
         $data = $this->runTasksByPosition('before_' . $task['name'], $data);
 
+        /* run tasks before replaced task */
+        $data = strcmp($replacedTask['name'], $task['name']) !== 0
+            ? $this->runTasksByPosition('before_' . $replacedTask['name'], $data) : $data;
+
         /* run task */
-        /* @var $taskClass Task */
-        $taskClass = $task['class'];
         $taskClass = new $taskClass();
         $returnData = $taskClass->run($this, $data);
         $data = array_merge($data, !is_array($returnData) ? [] : $returnData);
+
+        /* run tasks after replaced task */
+        $data = strcmp($replacedTask['name'], $task['name']) !== 0
+            ? $this->runTasksByPosition('after_' . $replacedTask['name'], $data) : $data;
 
         /* run tasks after task */
         $data = $this->runTasksByPosition('after_' . $task['name'], $data);
