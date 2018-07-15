@@ -343,7 +343,7 @@ class App implements ContainerInterface
         ];
         foreach ($functions as $function) {
             $entry = $this->$function($id);
-            if ($entry !== false) {
+            if ($entry !== null) {
                 return $entry;
             }
         }
@@ -357,7 +357,7 @@ class App implements ContainerInterface
      *
      * @param $id
      *
-     * @return bool|mixed
+     * @return null|mixed
      */
     protected function getEntryInstanceByIdKey($id)
     {
@@ -371,7 +371,7 @@ class App implements ContainerInterface
             }
         }
 
-        return false;
+        return null;
     }
 
     /**
@@ -379,7 +379,7 @@ class App implements ContainerInterface
      *
      * @param $id
      *
-     * @return bool|mixed
+     * @return null|mixed
      */
     protected function getEntryValueByIdKey($id)
     {
@@ -393,7 +393,7 @@ class App implements ContainerInterface
             }
         }
 
-        return false;
+        return null;
     }
 
     /**
@@ -401,7 +401,7 @@ class App implements ContainerInterface
      *
      * @param $id
      *
-     * @return bool|object
+     * @return null|object
      * @throws ContainerException|NotFoundException
      */
     protected function getEntryInstanceByIdClass($id)
@@ -438,7 +438,7 @@ class App implements ContainerInterface
             return $instance;
         }
 
-        return false;
+        return null;
     }
 
     /**
@@ -446,7 +446,7 @@ class App implements ContainerInterface
      *
      * @param $id
      *
-     * @return bool|object
+     * @return null|object
      * @throws ContainerException|NotFoundException
      */
     protected function getEntryInstanceByIdInterface($id)
@@ -457,7 +457,7 @@ class App implements ContainerInterface
             return $this->get($resource);
         }
 
-        return false;
+        return null;
     }
 
     /**
