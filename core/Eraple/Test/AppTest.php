@@ -3,6 +3,7 @@
 namespace Eraple\Test;
 
 use Eraple\App;
+use Zend\Di\Exception\CircularDependencyException;
 
 class AppTest extends \PHPUnit\Framework\TestCase
 {
@@ -60,8 +61,10 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertTrue(true);
     }
 
+    /* test it can check entry exists */
     public function testHas() { $this->assertTrue(true); }
 
+    /* test it can get entry */
     public function testGet()
     {
         /* id is key and entry is value */
@@ -125,14 +128,22 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->app->set(InterfaceThree::class, ClassThree::class);
         $this->app->set(ClassThree::class, ['parameters' => ['name' => 'Amit Sidhpura']]);
         $this->assertInstanceOf(ClassThree::class, $this->app->get(InterfaceThree::class));
+
+        /* throws exception on circular dependency */
+        $this->expectException(CircularDependencyException::class);
+        $this->app->get(ClassSix::class);
     }
 
+    /* test it can set entry */
     public function testSet() { $this->assertTrue(true); }
 
+    /* test it can get modules */
     public function testGetModules() { $this->assertTrue(true); }
 
+    /* test it can get tasks */
     public function testGetTasks() { $this->assertTrue(true); }
 
+    /* test it can get resources */
     public function testGetResources() { $this->assertTrue(true); }
 
     /* test it can get root path */
@@ -211,4 +222,14 @@ class ClassThree implements InterfaceThree
 
 class ClassFour implements InterfaceOne
 {
+}
+
+class ClassFive
+{
+    public function __construct(ClassSix $classSix) { }
+}
+
+class ClassSix
+{
+    public function __construct(ClassFive $classFive) { }
 }
