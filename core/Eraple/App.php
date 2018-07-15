@@ -2,7 +2,13 @@
 
 namespace Eraple;
 
-class App
+use Psr\Container\ContainerInterface;
+use Zend\Di\Injector;
+use Zend\Di\Definition\RuntimeDefinition;
+use Zend\Di\Resolver\TypeInjection;
+use Zend\Di\Resolver\ValueInjection;
+
+class App implements ContainerInterface
 {
     /**
      * Application version.
@@ -26,16 +32,30 @@ class App
     protected static $instance;
 
     /**
+     * Dependency injector.
+     *
+     * @var Injector
+     */
+    protected $injector;
+
+    /**
+     * Class definitions based on runtime reflection.
+     *
+     * @var RuntimeDefinition
+     */
+    protected $definition;
+
+    /**
      * Registered modules.
      *
-     * @var array
+     * @var Module[]
      */
     protected $modules = [];
 
     /**
      * Registered tasks.
      *
-     * @var array
+     * @var Task[]
      */
     protected $tasks = [];
 
@@ -55,6 +75,8 @@ class App
     {
         $this->rootPath = $rootPath;
         self::$instance = $this;
+        $this->injector = new Injector(null, $this);
+        $this->definition = new RuntimeDefinition();
     }
 
     /**
@@ -90,6 +112,7 @@ class App
     {
         $this->registerModules();
         $this->registerTasks();
+        $this->registerResources();
         $this->fireEvent('start');
         $this->fireEvent('end');
     }
@@ -125,6 +148,21 @@ class App
             $moduleClass = $module;
             $moduleClass = new $moduleClass();
             $moduleClass->registerTasks($this);
+        }
+    }
+
+    /**
+     * Register resources.
+     */
+    protected function registerResources()
+    {
+        /* register resources */
+        foreach ($this->tasks as $task) {
+            $resources = $task::getResources();
+
+            foreach ($resources as $resourceId => $resource) {
+                $this->set($resourceId, $resource);
+            }
         }
     }
 
@@ -258,6 +296,201 @@ class App
         $data = $this->runTasksByPosition('after_' . $task::getName(), $data);
 
         return $data;
+    }
+
+    /**
+     * Check whether an entry exists in the application.
+     *
+     * @param string $id
+     *
+     * @return bool
+     */
+    public function has($id)
+    {
+        if (isset($this->resources[$id])) {
+            return true;
+        }
+
+        return $this->injector->canCreate($id);
+    }
+
+    /**
+     * Get an entry of the application by its id.
+     *
+     * @param string $id
+     *
+     * @return mixed
+     * @throws NotFoundException|ContainerException
+     */
+    public function get($id)
+    {
+        /* entry not found and not creatable */
+        if (!$this->has($id)) {
+            throw new NotFoundException();
+        }
+
+        /* entry not found but creatable */
+        if (!isset($this->resources[$id])) {
+            return $this->injector->create($id);
+        }
+
+        /* entry found */
+        $functions = [
+            'getEntryInstanceByIdKey',
+            'getEntryValueByIdKey',
+            'getEntryFunctionByIdKey',
+            'getEntryInstanceByIdClass',
+            'getEntryInstanceByIdInterface'
+        ];
+        foreach ($functions as $function) {
+            $entry = $this->$function($id);
+            if ($entry !== false) {
+                return $entry;
+            }
+        }
+
+        /* throw exception of not able to return entry */
+        throw new ContainerException();
+    }
+
+    protected function getEntryInstanceByIdKey($id)
+    {
+        $resource = $this->resources[$id];
+
+        if (is_array($resource) && isset($resource['instance'])) {
+            if ($resource['instance'] instanceof \Closure) {
+                return $resource['instance']($this);
+            } else {
+                return $resource['instance'];
+            }
+        }
+
+        return false;
+    }
+
+    protected function getEntryValueByIdKey($id)
+    {
+        $resource = $this->resources[$id];
+
+        if (!class_exists($id) && !interface_exists($id) && !($resource instanceof \Closure)) {
+            return $resource;
+        }
+
+        return false;
+    }
+
+    protected function getEntryFunctionByIdKey($id)
+    {
+        $resource = $this->resources[$id];
+
+        if (!class_exists($id) && !interface_exists($id) && $resource instanceof \Closure) {
+            return $resource($this);
+        }
+
+        return false;
+    }
+
+    protected function getEntryInstanceByIdClass($id)
+    {
+        $resource = $this->resources[$id];
+
+        if (class_exists($id) && is_array($resource)) {
+            $parameters = (isset($resource['parameters'])) ? $resource['parameters'] : [];
+            $preferences = (isset($resource['preferences'])) ? $resource['preferences'] : [];
+
+            /* add preferences as parameters */
+            $classParameters = $this->definition->getClassDefinition($id)->getParameters();
+            foreach ($classParameters as $classParameter) {
+                $classParameterName = $classParameter->getName();
+                $classParameterType = $classParameter->getType();
+
+                if (isset($parameters[$classParameterName])) {
+                    continue;
+                }
+
+                if (isset($preferences[$classParameterType])) {
+                    $parameters[$classParameterName] = $this->get($preferences[$classParameterType]);
+                }
+            }
+
+            $instance = $this->injector->create($id, $parameters);
+
+            /* set instance to resource type if singleton is true */
+            if (isset($resource['singleton']) && $resource['singleton'] === true) {
+                $this->resources[$id]['instance'] = $instance;
+            }
+
+            return $instance;
+        }
+
+        return false;
+    }
+
+    protected function getEntryInstanceByIdInterface($id)
+    {
+        $resource = $this->resources[$id];
+
+        if (interface_exists($id) && is_string($resource) && class_exists($resource)) {
+            if (isset($this->resources[$resource])) {
+                return $this->getEntryInstanceByIdClass($resource);
+            }
+
+            return $this->injector->create($resource);
+        }
+
+        return false;
+    }
+
+    /**
+     * Set an entry to the application.
+     *
+     * @param    string $id
+     * @param           $entry
+     *
+     * @return $this
+     */
+    public function set(string $id, $entry)
+    {
+        $this->resources[$id] = $entry;
+
+        return $this;
+    }
+
+    /**
+     * Get all the modules registered to the application.
+     *
+     * @return Module[]
+     */
+    public function getModules()
+    {
+        return $this->modules;
+    }
+
+    /**
+     * Get all the tasks registered to the application.
+     *
+     * @return Task[]
+     */
+    public function getTasks()
+    {
+        return $this->tasks;
+    }
+
+    /**
+     * Get all the resources registered to the application.
+     *
+     * @return array
+     */
+    public function getResources()
+    {
+        return $this->resources;
+    }
+
+    public function flush()
+    {
+        $this->modules = [];
+        $this->tasks = [];
+        $this->resources = [];
     }
 
     /**
