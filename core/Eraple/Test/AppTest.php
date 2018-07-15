@@ -68,8 +68,8 @@ class AppTest extends \PHPUnit\Framework\TestCase
     public function testGet()
     {
         /* id is key and entry is value */
-        $this->app->set('name', 'Amit Sidhpura');
-        $this->assertSame('Amit Sidhpura', $this->app->get('name'));
+        $this->app->set('name', ['Amit Sidhpura']);
+        $this->assertSame(['Amit Sidhpura'], $this->app->get('name'));
 
         /* id is key and entry instance is value  */
         $this->app->set('name', ['instance' => 'Amit Sidhpura']);
@@ -128,6 +128,38 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->app->set(InterfaceThree::class, ClassThree::class);
         $this->app->set(ClassThree::class, ['parameters' => ['name' => 'Amit Sidhpura']]);
         $this->assertInstanceOf(ClassThree::class, $this->app->get(InterfaceThree::class));
+
+        /* id is alias and entry is value */
+        $this->app->set('name', 'Amit Sidhpura');
+        $this->app->set('my_name', ['typeOf' => 'name']);
+        $this->assertSame('Amit Sidhpura', $this->app->get('my_name'));
+
+        /* id is alias and entry is interface */
+        $this->app->set('class_three', ['typeOf' => InterfaceThree::class]);
+        $classThree = $this->app->get('class_three');
+        $this->assertInstanceOf(ClassThree::class, $classThree);
+        $this->assertSame('Amit Sidhpura', $classThree->name);
+        $this->app->set('class_three', ['typeOf' => InterfaceThree::class, 'parameters' => ['name' => 'Dipali Sidhpura']]);
+        $classThree = $this->app->get('class_three');
+        $this->assertInstanceOf(ClassThree::class, $classThree);
+        $this->assertSame('Dipali Sidhpura', $classThree->name);
+
+        /* id is alias and entry is class */
+        $this->app->set('class_three', ['typeOf' => ClassThree::class]);
+        $classThree = $this->app->get('class_three');
+        $this->assertInstanceOf(ClassThree::class, $classThree);
+        $this->assertSame('Amit Sidhpura', $classThree->name);
+        $this->app->set('class_three', ['typeOf' => ClassThree::class, 'parameters' => ['name' => 'Dipali Sidhpura']]);
+        $classThree = $this->app->get('class_three');
+        $this->assertInstanceOf(ClassThree::class, $classThree);
+        $this->assertSame('Dipali Sidhpura', $classThree->name);
+
+        /* id is alias and entry is alias */
+        $this->app->flush();
+        $this->app->set('name', 'Amit Sidhpura');
+        $this->app->set('name_one', ['typeOf' => 'name']);
+        $this->app->set('name_two', ['typeOf' => 'name_one']);
+        $this->assertSame('Amit Sidhpura', $this->app->get('name_two'));
 
         /* throws exception on circular dependency */
         $this->expectException(CircularDependencyException::class);

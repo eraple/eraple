@@ -5,8 +5,7 @@ namespace Eraple;
 use Psr\Container\ContainerInterface;
 use Zend\Di\Injector;
 use Zend\Di\Definition\RuntimeDefinition;
-use Zend\Di\Resolver\TypeInjection;
-use Zend\Di\Resolver\ValueInjection;
+use Zend\Di\Exception\CircularDependencyException;
 
 class App implements ContainerInterface
 {
@@ -65,6 +64,13 @@ class App implements ContainerInterface
      * @var array
      */
     protected $resources = [];
+
+    /**
+     * Instance stack.
+     *
+     * @var array
+     */
+    protected $instanceStack = [];
 
     /**
      * Application constructor.
@@ -315,81 +321,74 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get an entry of the application by its id.
+     * Get an instance of the application resource by its id.
      *
      * @param string $id
+     * @param  mixed $entry
      *
      * @return mixed
      * @throws NotFoundException|ContainerException
      */
-    public function get($id)
+    public function get($id, $entry = null)
     {
-        /* entry not found and not creatable */
+        /* entry not found and not instantiable */
         if (!$this->has($id)) {
             throw new NotFoundException();
         }
 
-        /* entry not found but creatable */
+        /* entry not found but instantiable */
         if (!isset($this->resources[$id])) {
             return $this->injector->create($id);
         }
 
-        /* entry found */
+        /* check circular dependency */
+        if (in_array($id, $this->instanceStack)) {
+            throw new CircularDependencyException(sprintf(
+                'Circular dependency: %s -> %s',
+                implode(' -> ', $this->instanceStack),
+                $id
+            ));
+        } else {
+            $this->instanceStack[] = $id;
+        }
+
+        /* entry found and instantiable */
         $functions = [
             'getEntryInstanceByIdKey',
-            'getEntryValueByIdKey',
             'getEntryInstanceByIdClass',
-            'getEntryInstanceByIdInterface'
+            'getEntryInstanceByIdInterface',
+            'getEntryInstanceByIdAlias'
         ];
+        $entry = ($entry !== null) ? $entry : $this->resources[$id];
+        $entry = (is_array($entry) && is_array($this->resources[$id])) ? array_merge($this->resources[$id], $entry) : $entry;
         foreach ($functions as $function) {
-            $entry = $this->$function($id);
-            if ($entry !== null) {
-                return $entry;
+            $instance = $this->$function($id, $entry);
+            if ($instance !== null) {
+                array_pop($this->instanceStack);
+
+                return $instance;
             }
         }
 
-        /* throw exception of not able to return entry */
+        /* throw exception if entry not instantiable */
         throw new ContainerException();
     }
 
     /**
      * Get an entry instance of the application by its id key.
      *
-     * @param $id
+     * @param string $id
+     * @param  mixed $entry
      *
      * @return null|mixed
      */
-    protected function getEntryInstanceByIdKey($id)
+    protected function getEntryInstanceByIdKey(string $id, $entry)
     {
-        $resource = $this->resources[$id];
-
-        if (is_array($resource) && isset($resource['instance'])) {
-            if ($resource['instance'] instanceof \Closure) {
-                return $resource['instance']($this);
+        if (is_array($entry) && isset($entry['instance'])) {
+            if ($entry['instance'] instanceof \Closure) {
+                return $entry['instance']($this);
             } else {
-                return $resource['instance'];
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Get an entry value of the application by its id key.
-     *
-     * @param $id
-     *
-     * @return null|mixed
-     */
-    protected function getEntryValueByIdKey($id)
-    {
-        $resource = $this->resources[$id];
-
-        if (!class_exists($id) && !interface_exists($id)) {
-            if ($resource instanceof \Closure) {
-                return $resource($this);
-            } else {
-                return $resource;
+                return $entry['instance'];
             }
         }
 
@@ -399,18 +398,17 @@ class App implements ContainerInterface
     /**
      * Get an entry instance of the application by it id class.
      *
-     * @param $id
+     * @param string $id
+     * @param  mixed $entry
      *
      * @return null|object
      * @throws ContainerException|NotFoundException
      */
-    protected function getEntryInstanceByIdClass($id)
+    protected function getEntryInstanceByIdClass(string $id, $entry)
     {
-        $resource = $this->resources[$id];
-
-        if (class_exists($id) && is_array($resource)) {
-            $parameters = (isset($resource['parameters'])) ? $resource['parameters'] : [];
-            $preferences = (isset($resource['preferences'])) ? $resource['preferences'] : [];
+        if (class_exists($id) && is_array($entry)) {
+            $parameters = (isset($entry['parameters'])) ? $entry['parameters'] : [];
+            $preferences = (isset($entry['preferences'])) ? $entry['preferences'] : [];
 
             /* add preferences as parameters */
             $classParameters = $this->definition->getClassDefinition($id)->getParameters();
@@ -431,7 +429,7 @@ class App implements ContainerInterface
             $instance = $this->injector->create($id, $parameters);
 
             /* save instance to resources if singleton is true */
-            if (isset($resource['singleton']) && $resource['singleton'] === true) {
+            if (isset($entry['singleton']) && $entry['singleton'] === true) {
                 $this->resources[$id]['instance'] = $instance;
             }
 
@@ -444,17 +442,42 @@ class App implements ContainerInterface
     /**
      * Get an entry instance of the application by it id interface.
      *
-     * @param $id
+     * @param string $id
+     * @param  mixed $entry
      *
      * @return null|object
      * @throws ContainerException|NotFoundException
      */
-    protected function getEntryInstanceByIdInterface($id)
+    protected function getEntryInstanceByIdInterface(string $id, $entry)
     {
-        $resource = $this->resources[$id];
+        if (interface_exists($id) && is_array($entry) && isset($entry['concrete']) && class_exists($entry['concrete'])) {
+            $concrete = $entry['concrete'];
+            unset($entry['concrete']);
+            $entry = count($entry) ? $entry : null;
 
-        if (interface_exists($id) && is_string($resource) && class_exists($resource)) {
-            return $this->get($resource);
+            return $this->get($concrete, $entry);
+        }
+
+        return null;
+    }
+
+    /**
+     * Get an entry instance of the application by it id alias.
+     *
+     * @param string $id
+     * @param  mixed $entry
+     *
+     * @return null|mixed
+     * @throws ContainerException|NotFoundException
+     */
+    protected function getEntryInstanceByIdAlias(string $id, $entry)
+    {
+        if (!class_exists($id) && !interface_exists($id) && is_array($entry) && isset($entry['typeOf'])) {
+            $id = $entry['typeOf'];
+            unset($entry['typeOf']);
+            $entry = count($entry) ? $entry : null;
+
+            return $this->get($id, $entry);
         }
 
         return null;
@@ -464,12 +487,23 @@ class App implements ContainerInterface
      * Set an entry to the application.
      *
      * @param    string $id
-     * @param           $entry
+     * @param     mixed $entry
      *
      * @return $this
      */
     public function set(string $id, $entry)
     {
+        /* process entry with id as key and entry as value */
+        if (!class_exists($id) && !interface_exists($id)
+            && (!is_array($entry) || (!isset($entry['typeOf']) && !isset($entry['instance'])))) {
+            $entry = ['instance' => $entry];
+        }
+
+        /* process entry with id as interface and entry as class */
+        if (interface_exists($id) && is_string($entry) && class_exists($entry)) {
+            $entry = ['concrete' => $entry];
+        }
+
         $this->resources[$id] = $entry;
 
         return $this;
@@ -506,13 +540,24 @@ class App implements ContainerInterface
     }
 
     /**
-     * Flush all the modules, tasks and resources of the application.
+     * Get stack of instances of the application.
+     *
+     * @return array
+     */
+    public function getInstanceStack()
+    {
+        return $this->instanceStack;
+    }
+
+    /**
+     * Flush all the modules, tasks, resources and instance stack of the application.
      */
     public function flush()
     {
         $this->modules = [];
         $this->tasks = [];
         $this->resources = [];
+        $this->instanceStack = [];
     }
 
     /**
