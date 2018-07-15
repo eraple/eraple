@@ -22,10 +22,17 @@
         "framework"
     ],
     "require": {
-        "php": "^7.1.3"
+        "php": "^7.1.3",
+        "psr/container": "^1.0",
+        "zendframework/zend-di": "^3.0"
     },
     "require-dev": {
-        "phpunit/phpunit": "7.0"
+        "phpunit/phpunit": "7.0",
+        "mikey179/vfsStream": "^1.6",
+        "container-interop/container-interop": "^1.2",
+        "zendframework/zend-code": "^3.3",
+        "zendframework/zend-coding-standard": "^1.0",
+        "zendframework/zend-servicemanager": "^3.3"
     },
     "autoload": {
         "psr-4": {
@@ -33,6 +40,13 @@
                 "core/Eraple/",
                 "local/Eraple/"
             ]
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "ZendTest\\Di\\": "vendor/zendframework/zend-di/test/",
+            "ZendTest\\ServiceManager\\": "vendor/zendframework/zend-servicemanager/test/",
+            "ZendBench\\ServiceManager\\": "vendor/zendframework/zend-servicemanager/benchmarks/"
         }
     },
     "scripts": {
