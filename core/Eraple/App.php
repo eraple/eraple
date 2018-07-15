@@ -338,7 +338,6 @@ class App implements ContainerInterface
         $functions = [
             'getEntryInstanceByIdKey',
             'getEntryValueByIdKey',
-            'getEntryFunctionByIdKey',
             'getEntryInstanceByIdClass',
             'getEntryInstanceByIdInterface'
         ];
@@ -353,6 +352,13 @@ class App implements ContainerInterface
         throw new ContainerException();
     }
 
+    /**
+     * Get an entry instance of the application by its id key.
+     *
+     * @param $id
+     *
+     * @return bool|mixed
+     */
     protected function getEntryInstanceByIdKey($id)
     {
         $resource = $this->resources[$id];
@@ -368,28 +374,36 @@ class App implements ContainerInterface
         return false;
     }
 
+    /**
+     * Get an entry value of the application by its id key.
+     *
+     * @param $id
+     *
+     * @return bool|mixed
+     */
     protected function getEntryValueByIdKey($id)
     {
         $resource = $this->resources[$id];
 
-        if (!class_exists($id) && !interface_exists($id) && !($resource instanceof \Closure)) {
-            return $resource;
+        if (!class_exists($id) && !interface_exists($id)) {
+            if ($resource instanceof \Closure) {
+                return $resource($this);
+            } else {
+                return $resource;
+            }
         }
 
         return false;
     }
 
-    protected function getEntryFunctionByIdKey($id)
-    {
-        $resource = $this->resources[$id];
-
-        if (!class_exists($id) && !interface_exists($id) && $resource instanceof \Closure) {
-            return $resource($this);
-        }
-
-        return false;
-    }
-
+    /**
+     * Get an entry instance of the application by it id class.
+     *
+     * @param $id
+     *
+     * @return bool|object
+     * @throws ContainerException|NotFoundException
+     */
     protected function getEntryInstanceByIdClass($id)
     {
         $resource = $this->resources[$id];
@@ -413,9 +427,10 @@ class App implements ContainerInterface
                 }
             }
 
+            /* create class instance with parameters */
             $instance = $this->injector->create($id, $parameters);
 
-            /* set instance to resource type if singleton is true */
+            /* save instance to resources if singleton is true */
             if (isset($resource['singleton']) && $resource['singleton'] === true) {
                 $this->resources[$id]['instance'] = $instance;
             }
@@ -426,16 +441,20 @@ class App implements ContainerInterface
         return false;
     }
 
+    /**
+     * Get an entry instance of the application by it id interface.
+     *
+     * @param $id
+     *
+     * @return bool|object
+     * @throws ContainerException|NotFoundException
+     */
     protected function getEntryInstanceByIdInterface($id)
     {
         $resource = $this->resources[$id];
 
         if (interface_exists($id) && is_string($resource) && class_exists($resource)) {
-            if (isset($this->resources[$resource])) {
-                return $this->getEntryInstanceByIdClass($resource);
-            }
-
-            return $this->injector->create($resource);
+            return $this->get($resource);
         }
 
         return false;
@@ -486,6 +505,9 @@ class App implements ContainerInterface
         return $this->resources;
     }
 
+    /**
+     * Flush all the modules, tasks and resources of the application.
+     */
     public function flush()
     {
         $this->modules = [];
