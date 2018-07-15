@@ -1,6 +1,7 @@
 /.idea
 /.vscode
 /.vagrant
+/.place
 /node_modules
 /vendor
 npm-debug.log
