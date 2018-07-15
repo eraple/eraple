@@ -307,7 +307,7 @@ class App implements ContainerInterface
     /**
      * Check whether an entry exists in the application.
      *
-     * @param string $id
+     * @param string $id Id of an entry
      *
      * @return bool
      */
@@ -323,8 +323,8 @@ class App implements ContainerInterface
     /**
      * Get an instance of the application resource by its id.
      *
-     * @param string $id
-     * @param  mixed $entry
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
      *
      * @return mixed
      * @throws NotFoundException|ContainerException
@@ -377,8 +377,8 @@ class App implements ContainerInterface
     /**
      * Get an entry instance of the application by its id key.
      *
-     * @param string $id
-     * @param  mixed $entry
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
      *
      * @return null|mixed
      */
@@ -398,8 +398,8 @@ class App implements ContainerInterface
     /**
      * Get an entry instance of the application by it id class.
      *
-     * @param string $id
-     * @param  mixed $entry
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
      *
      * @return null|object
      * @throws ContainerException|NotFoundException
@@ -442,8 +442,8 @@ class App implements ContainerInterface
     /**
      * Get an entry instance of the application by it id interface.
      *
-     * @param string $id
-     * @param  mixed $entry
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
      *
      * @return null|object
      * @throws ContainerException|NotFoundException
@@ -464,8 +464,8 @@ class App implements ContainerInterface
     /**
      * Get an entry instance of the application by it id alias.
      *
-     * @param string $id
-     * @param  mixed $entry
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
      *
      * @return null|mixed
      * @throws ContainerException|NotFoundException
@@ -486,8 +486,8 @@ class App implements ContainerInterface
     /**
      * Set an entry to the application.
      *
-     * @param    string $id
-     * @param     mixed $entry
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
      *
      * @return $this
      */
