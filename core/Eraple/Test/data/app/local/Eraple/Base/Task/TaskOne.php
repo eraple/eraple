@@ -19,7 +19,7 @@ class TaskOne extends Task
     {
         echo 'task one completed.' . PHP_EOL;
 
-        $data = $app->fireEvent('just-an-event', ['name' => 'amit sidhpura']);
+        $data = $app->fire('just-an-event', ['name' => 'amit sidhpura']);
 
         print_r($data);
     }

@@ -56,7 +56,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
     }
 
     /* test it can fire event */
-    public function testFireEvent()
+    public function testFire()
     {
         $this->assertTrue(true);
     }

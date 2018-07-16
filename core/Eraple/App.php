@@ -119,8 +119,8 @@ class App implements ContainerInterface
         $this->registerModules();
         $this->registerTasks();
         $this->registerResources();
-        $this->fireEvent('start');
-        $this->fireEvent('end');
+        $this->fire('start');
+        $this->fire('end');
     }
 
     /**
@@ -206,7 +206,7 @@ class App implements ContainerInterface
      *
      * @return array
      */
-    public function fireEvent(string $event, array $data = [])
+    public function fire(string $event, array $data = [])
     {
         /* return if event name is not valid */
         if (!$this->isValidName($event)) return $data;
