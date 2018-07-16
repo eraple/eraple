@@ -402,7 +402,7 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return null|object
-     * @throws ContainerException|NotFoundException
+     * @throws NotFoundException|ContainerException
      */
     protected function getEntryInstanceByIdClass(string $id, $entry)
     {
@@ -446,7 +446,7 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return null|object
-     * @throws ContainerException|NotFoundException
+     * @throws NotFoundException|ContainerException
      */
     protected function getEntryInstanceByIdInterface(string $id, $entry)
     {
@@ -468,7 +468,7 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return null|mixed
-     * @throws ContainerException|NotFoundException
+     * @throws NotFoundException|ContainerException
      */
     protected function getEntryInstanceByIdAlias(string $id, $entry)
     {
@@ -610,19 +610,6 @@ class App implements ContainerInterface
     }
 
     /**
-     * Access resource instance by name and arguments.
-     *
-     * @param string $name Name of the resource
-     * @param  array $arguments
-     *
-     * @return mixed
-     */
-    public function __call(string $name, $arguments)
-    {
-        return;
-    }
-
-    /**
      * Convert string with delimiters to camelcase.
      *
      * @param string $string
@@ -646,5 +633,19 @@ class App implements ContainerInterface
     public function uncamelize(string $string, string $delimiter = '-')
     {
         return strtolower(preg_replace('/([a-z])([A-Z])/', '\\1' . $delimiter . '\\2', $string));
+    }
+
+    /**
+     * Access resource instance by name and arguments.
+     *
+     * @param string $name Name of the resource
+     * @param  array $arguments
+     *
+     * @return mixed
+     * @throws NotFoundException|ContainerException
+     */
+    public function __call(string $name, $arguments)
+    {
+        return $this->get($this->uncamelize($name));
     }
 }

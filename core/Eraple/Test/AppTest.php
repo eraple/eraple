@@ -214,7 +214,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertFalse($this->app->isValidName('task_one'));
     }
 
-    /* test it can convert delimiter string to camelcase */
+    /* test it can convert delimiters string to camelcase string */
     public function testCamelize()
     {
         $this->assertSame('taskOne', $this->app->camelize('task-one'));
@@ -222,11 +222,19 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertSame('taskone', $this->app->camelize('taskone'));
     }
 
+    /* test it can convert camelcase string to delimiters string */
     public function testUncamelize()
     {
         $this->assertSame('task-one', $this->app->uncamelize('taskOne'));
         $this->assertSame('task_one', $this->app->uncamelize('taskOne', '_'));
         $this->assertSame('taskone', $this->app->uncamelize('taskone'));
+    }
+
+    /* test it can get resource with name and arguments */
+    public function testCall()
+    {
+        $this->app->set('my-name', 'Amit Sidhpura');
+        $this->assertSame('Amit Sidhpura', $this->app->myName());
     }
 }
 
