@@ -493,6 +493,9 @@ class App implements ContainerInterface
      */
     public function set(string $id, $entry)
     {
+        /* discard entry with invalid name */
+        if (!class_exists($id) && !interface_exists($id) && !$this->isValidName($id)) return $this;
+
         /* process entry with id as key and entry as value */
         if (!class_exists($id) && !interface_exists($id)
             && (!is_array($entry) || (!isset($entry['typeOf']) && !isset($entry['instance'])))) {
@@ -604,5 +607,44 @@ class App implements ContainerInterface
         }
 
         return false;
+    }
+
+    /**
+     * Access resource instance by name and arguments.
+     *
+     * @param string $name Name of the resource
+     * @param  array $arguments
+     *
+     * @return mixed
+     */
+    public function __call(string $name, $arguments)
+    {
+        return;
+    }
+
+    /**
+     * Convert string with delimiters to camelcase.
+     *
+     * @param string $string
+     * @param string $delimiter
+     *
+     * @return string
+     */
+    public function camelize(string $string, string $delimiter = '-')
+    {
+        return lcfirst(str_replace($delimiter, '', ucwords($string, $delimiter)));
+    }
+
+    /**
+     * Convert camelcase string to delimiters string.
+     *
+     * @param string $string
+     * @param string $delimiter
+     *
+     * @return string
+     */
+    public function uncamelize(string $string, string $delimiter = '-')
+    {
+        return strtolower(preg_replace('/([a-z])([A-Z])/', '\\1' . $delimiter . '\\2', $string));
     }
 }

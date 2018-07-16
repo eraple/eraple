@@ -77,12 +77,12 @@ class AppTest extends \PHPUnit\Framework\TestCase
 
         /* id is key and entry is closure */
         $this->app->flush();
-        $this->app->set('getName', function () { return 'Amit Sidhpura'; });
-        $this->assertSame('Amit Sidhpura', $this->app->get('getName'));
+        $this->app->set('get-name', function () { return 'Amit Sidhpura'; });
+        $this->assertSame('Amit Sidhpura', $this->app->get('get-name'));
 
         /* id is key and entry instance is closure */
-        $this->app->set('getName', ['instance' => function () { return 'Amit Sidhpura'; }]);
-        $this->assertSame('Amit Sidhpura', $this->app->get('getName'));
+        $this->app->set('get-name', ['instance' => function () { return 'Amit Sidhpura'; }]);
+        $this->assertSame('Amit Sidhpura', $this->app->get('get-name'));
 
         /* id is class and entry has singleton as false */
         $this->app->flush();
@@ -131,35 +131,35 @@ class AppTest extends \PHPUnit\Framework\TestCase
 
         /* id is alias and entry is value */
         $this->app->set('name', 'Amit Sidhpura');
-        $this->app->set('my_name', ['typeOf' => 'name']);
-        $this->assertSame('Amit Sidhpura', $this->app->get('my_name'));
+        $this->app->set('my-name', ['typeOf' => 'name']);
+        $this->assertSame('Amit Sidhpura', $this->app->get('my-name'));
 
         /* id is alias and entry is interface */
-        $this->app->set('class_three', ['typeOf' => InterfaceThree::class]);
-        $classThree = $this->app->get('class_three');
+        $this->app->set('class-three', ['typeOf' => InterfaceThree::class]);
+        $classThree = $this->app->get('class-three');
         $this->assertInstanceOf(ClassThree::class, $classThree);
         $this->assertSame('Amit Sidhpura', $classThree->name);
-        $this->app->set('class_three', ['typeOf' => InterfaceThree::class, 'parameters' => ['name' => 'Dipali Sidhpura']]);
-        $classThree = $this->app->get('class_three');
+        $this->app->set('class-three', ['typeOf' => InterfaceThree::class, 'parameters' => ['name' => 'Dipali Sidhpura']]);
+        $classThree = $this->app->get('class-three');
         $this->assertInstanceOf(ClassThree::class, $classThree);
         $this->assertSame('Dipali Sidhpura', $classThree->name);
 
         /* id is alias and entry is class */
-        $this->app->set('class_three', ['typeOf' => ClassThree::class]);
-        $classThree = $this->app->get('class_three');
+        $this->app->set('class-three', ['typeOf' => ClassThree::class]);
+        $classThree = $this->app->get('class-three');
         $this->assertInstanceOf(ClassThree::class, $classThree);
         $this->assertSame('Amit Sidhpura', $classThree->name);
-        $this->app->set('class_three', ['typeOf' => ClassThree::class, 'parameters' => ['name' => 'Dipali Sidhpura']]);
-        $classThree = $this->app->get('class_three');
+        $this->app->set('class-three', ['typeOf' => ClassThree::class, 'parameters' => ['name' => 'Dipali Sidhpura']]);
+        $classThree = $this->app->get('class-three');
         $this->assertInstanceOf(ClassThree::class, $classThree);
         $this->assertSame('Dipali Sidhpura', $classThree->name);
 
         /* id is alias and entry is alias */
         $this->app->flush();
         $this->app->set('name', 'Amit Sidhpura');
-        $this->app->set('name_one', ['typeOf' => 'name']);
-        $this->app->set('name_two', ['typeOf' => 'name_one']);
-        $this->assertSame('Amit Sidhpura', $this->app->get('name_two'));
+        $this->app->set('name-one', ['typeOf' => 'name']);
+        $this->app->set('name-two', ['typeOf' => 'name-one']);
+        $this->assertSame('Amit Sidhpura', $this->app->get('name-two'));
 
         /* throws exception on circular dependency */
         $this->expectException(CircularDependencyException::class);
@@ -177,6 +177,12 @@ class AppTest extends \PHPUnit\Framework\TestCase
 
     /* test it can get resources */
     public function testGetResources() { $this->assertTrue(true); }
+
+    /* test it can get instance stack */
+    public function testGetInstanceStack() { $this->assertTrue(true); }
+
+    /* test it can flush all modules, tasks, resources and instance stack of the application */
+    public function testFlush() { $this->assertTrue(true); }
 
     /* test it can get root path */
     public function testGetRootPath()
@@ -206,6 +212,21 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertFalse($this->app->isValidName('am'));
         $this->assertFalse($this->app->isValidName('Task-one'));
         $this->assertFalse($this->app->isValidName('task_one'));
+    }
+
+    /* test it can convert delimiter string to camelcase */
+    public function testCamelize()
+    {
+        $this->assertSame('taskOne', $this->app->camelize('task-one'));
+        $this->assertSame('taskOne', $this->app->camelize('task_one', '_'));
+        $this->assertSame('taskone', $this->app->camelize('taskone'));
+    }
+
+    public function testUncamelize()
+    {
+        $this->assertSame('task-one', $this->app->uncamelize('taskOne'));
+        $this->assertSame('task_one', $this->app->uncamelize('taskOne', '_'));
+        $this->assertSame('taskone', $this->app->uncamelize('taskone'));
     }
 }
 
