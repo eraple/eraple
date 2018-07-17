@@ -80,7 +80,6 @@ class App implements ContainerInterface
     public function __construct(string $rootPath = null)
     {
         $this->rootPath = $rootPath;
-        self::$instance = $this;
         $this->injector = new Injector(null, $this);
         $this->definition = new RuntimeDefinition();
     }
@@ -359,11 +358,11 @@ class App implements ContainerInterface
             'getEntryInstanceByIdInterface',
             'getEntryInstanceByIdAlias'
         ];
-        $entry = ($entry !== null) ? $entry : $this->resources[$id];
+        $entry = (!is_null($entry)) ? $entry : $this->resources[$id];
         $entry = (is_array($entry) && is_array($this->resources[$id])) ? array_merge($this->resources[$id], $entry) : $entry;
         foreach ($functions as $function) {
             $instance = $this->$function($id, $entry);
-            if ($instance !== null) {
+            if (!is_null($instance)) {
                 array_pop($this->instanceStack);
 
                 return $instance;
@@ -510,6 +509,26 @@ class App implements ContainerInterface
         $this->resources[$id] = $entry;
 
         return $this;
+    }
+
+    /**
+     * Get injector instance of the application.
+     *
+     * @return Injector
+     */
+    public function getInjector()
+    {
+        return $this->injector;
+    }
+
+    /**
+     * Get runtime definition instance of the application.
+     *
+     * @return RuntimeDefinition
+     */
+    public function getDefinition()
+    {
+        return $this->definition;
     }
 
     /**
