@@ -3,7 +3,19 @@
 namespace Eraple\Test;
 
 use Eraple\App;
-use Zend\Di\Exception\CircularDependencyException;
+use Zend\Di\Injector;
+use Zend\Di\Definition\RuntimeDefinition;
+use Eraple\Test\Data\Stub\SampleModule;
+use Eraple\Test\Data\Stub\InvalidNameModule;
+use Eraple\Test\Data\Stub\NotImplementedModule;
+use Eraple\Test\Data\Stub\SampleTask;
+use Eraple\Test\Data\Stub\InvalidNameTask;
+use Eraple\Test\Data\Stub\NotImplementedTask;
+use Eraple\Test\Data\Stub\FireEventTask;
+use Eraple\Test\Data\Stub\FireHighPriorityEventTask;
+use Eraple\Test\Data\Stub\FireLowPriorityEventTask;
+use Eraple\Test\Data\Stub\FireBeforeEventTask;
+use Eraple\Test\Data\Stub\FireAfterEventTask;
 
 class AppTest extends \PHPUnit\Framework\TestCase
 {
@@ -16,19 +28,25 @@ class AppTest extends \PHPUnit\Framework\TestCase
     public function setUp()
     {
         $this->rootPath = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'app';
-        $this->app = App::instance($this->rootPath);
+        $this->app = new App($this->rootPath);
     }
 
-    /* test it can instantiate */
+    /* test it can instantiate and set root path, injector and runtime definition */
     public function testConstruct()
     {
-        $this->assertTrue(true);
+        $app = new App('some_path_here');
+        $this->assertSame('some_path_here' . DIRECTORY_SEPARATOR, $app->getRootPath());
+        $this->assertInstanceOf(Injector::class, $app->getInjector());
+        $this->assertInstanceOf(RuntimeDefinition::class, $app->getDefinition());
     }
 
     /* test it can instantiate and get global instance */
     public function testInstance()
     {
-        $this->assertTrue(true);
+        $appGlobal = App::instance();
+        $appLocal = new App();
+        $this->assertNotSame($appGlobal, $appLocal);
+        $this->assertSame($appGlobal, App::instance());
     }
 
     /* test it can get version */
@@ -38,145 +56,99 @@ class AppTest extends \PHPUnit\Framework\TestCase
     }
 
     /* test it can run */
-    public function testRun()
-    {
-        $this->assertTrue(true);
-    }
+    public function testRun() { $this->assertTrue(true); }
 
     /* test it can register module */
     public function testRegisterModule()
     {
-        $this->assertTrue(true);
+        $this->app->registerModule(SampleModule::class);
+        $this->app->registerModule(InvalidNameModule::class);
+        $this->app->registerModule(NotImplementedModule::class);
+        $this->assertSame(['sample-module' => SampleModule::class], $this->app->getModules());
     }
 
     /* test it can register task */
     public function testRegisterTask()
     {
-        $this->assertTrue(true);
+        $this->app->registerTask(SampleTask::class);
+        $this->app->registerModule(InvalidNameTask::class);
+        $this->app->registerModule(NotImplementedTask::class);
+        $this->assertSame(['sample-task' => SampleTask::class], $this->app->getTasks());
     }
 
     /* test it can fire event */
     public function testFire()
     {
-        $this->assertTrue(true);
+        /* test sequence of tasks based on priority and event */
+        $this->app->registerTask(FireLowPriorityEventTask::class);
+        $this->app->registerTask(FireHighPriorityEventTask::class);
+        $this->app->registerTask(FireEventTask::class);
+        $data = $this->app->fire('something-happened', ['key' => '(fired)']);
+        $this->assertSame(['key' => '(fired) high on low'], $data);
+
+        /* test sequence of tasks based on before and after event */
+        $this->app->registerTask(FireBeforeEventTask::class);
+        $this->app->registerTask(FireAfterEventTask::class);
+        $data = $this->app->fire('something-happened', ['key' => '(fired)']);
+        $this->assertSame(['key' => '(fired) before high on low after'], $data);
     }
 
     /* test it can check entry exists */
-    public function testHas() { $this->assertTrue(true); }
+    public function testHas()
+    {
+        $this->assertFalse($this->app->has('name'));
+        $this->app->set('name', 'Amit Sidhpura');
+        $this->assertTrue($this->app->has('name'));
+    }
 
     /* test it can get entry */
     public function testGet()
     {
-        /* id is key and entry is value */
-        $this->app->set('name', ['Amit Sidhpura']);
-        $this->assertSame(['Amit Sidhpura'], $this->app->get('name'));
-
-        /* id is key and entry instance is value  */
-        $this->app->set('name', ['instance' => 'Amit Sidhpura']);
+        $this->app->set('name', 'Amit Sidhpura');
         $this->assertSame('Amit Sidhpura', $this->app->get('name'));
-
-        /* id is key and entry is closure */
-        $this->app->flush();
-        $this->app->set('get-name', function () { return 'Amit Sidhpura'; });
-        $this->assertSame('Amit Sidhpura', $this->app->get('get-name'));
-
-        /* id is key and entry instance is closure */
-        $this->app->set('get-name', ['instance' => function () { return 'Amit Sidhpura'; }]);
-        $this->assertSame('Amit Sidhpura', $this->app->get('get-name'));
-
-        /* id is class and entry has singleton as false */
-        $this->app->flush();
-        $this->app->set(ClassOne::class, ['singleton' => false]);
-        $classOne1 = $this->app->get(ClassOne::class);
-        $classOne2 = $this->app->get(ClassOne::class);
-        $this->assertNotSame($classOne1, $classOne2);
-
-        /* id is class and entry has singleton as true */
-        $this->app->set(ClassOne::class, ['singleton' => true]);
-        $classOne1 = $this->app->get(ClassOne::class);
-        $classOne2 = $this->app->get(ClassOne::class);
-        $this->assertSame($classOne1, $classOne2);
-
-        /* id is class and entry has parameters */
-        $this->app->set(ClassThree::class, ['parameters' => ['name' => 'Amit Sidhpura']]);
-        $classThree = $this->app->get(ClassThree::class);
-        $this->assertInstanceOf(ClassThree::class, $classThree);
-        $this->assertSame('Amit Sidhpura', $classThree->name);
-
-        /* id is class and entry has preferences */
-        $this->app->set(InterfaceOne::class, ClassOne::class);
-        $classTwo = $this->app->get(ClassTwo::class);
-        $this->assertInstanceOf(ClassTwo::class, $classTwo);
-        $this->assertInstanceOf(ClassOne::class, $classTwo->classOne);
-
-        /* id is class and entry has preferences */
-        $this->app->set(ClassTwo::class, ['preferences' => [InterfaceOne::class => ClassFour::class]]);
-        $classTwo = $this->app->get(ClassTwo::class);
-        $this->assertInstanceOf(ClassTwo::class, $classTwo);
-        $this->assertInstanceOf(ClassFour::class, $classTwo->classOne);
-
-        /* id is interface and entry is class */
-        $this->app->flush();
-        $this->app->set(InterfaceOne::class, ClassOne::class);
-        $this->assertInstanceOf(ClassOne::class, $this->app->get(InterfaceOne::class));
-
-        /* id is interface and entry is class which has a dependency */
-        $this->app->set(InterfaceTwo::class, ClassTwo::class);
-        $this->assertInstanceOf(ClassTwo::class, $this->app->get(InterfaceTwo::class));
-
-        /* id is interface and entry is class which has a entry */
-        $this->app->set(InterfaceThree::class, ClassThree::class);
-        $this->app->set(ClassThree::class, ['parameters' => ['name' => 'Amit Sidhpura']]);
-        $this->assertInstanceOf(ClassThree::class, $this->app->get(InterfaceThree::class));
-
-        /* id is alias and entry is value */
-        $this->app->set('name', 'Amit Sidhpura');
-        $this->app->set('my-name', ['typeOf' => 'name']);
-        $this->assertSame('Amit Sidhpura', $this->app->get('my-name'));
-
-        /* id is alias and entry is interface */
-        $this->app->set('class-three', ['typeOf' => InterfaceThree::class]);
-        $classThree = $this->app->get('class-three');
-        $this->assertInstanceOf(ClassThree::class, $classThree);
-        $this->assertSame('Amit Sidhpura', $classThree->name);
-        $this->app->set('class-three', ['typeOf' => InterfaceThree::class, 'parameters' => ['name' => 'Dipali Sidhpura']]);
-        $classThree = $this->app->get('class-three');
-        $this->assertInstanceOf(ClassThree::class, $classThree);
-        $this->assertSame('Dipali Sidhpura', $classThree->name);
-
-        /* id is alias and entry is class */
-        $this->app->set('class-three', ['typeOf' => ClassThree::class]);
-        $classThree = $this->app->get('class-three');
-        $this->assertInstanceOf(ClassThree::class, $classThree);
-        $this->assertSame('Amit Sidhpura', $classThree->name);
-        $this->app->set('class-three', ['typeOf' => ClassThree::class, 'parameters' => ['name' => 'Dipali Sidhpura']]);
-        $classThree = $this->app->get('class-three');
-        $this->assertInstanceOf(ClassThree::class, $classThree);
-        $this->assertSame('Dipali Sidhpura', $classThree->name);
-
-        /* id is alias and entry is alias */
-        $this->app->flush();
-        $this->app->set('name', 'Amit Sidhpura');
-        $this->app->set('name-one', ['typeOf' => 'name']);
-        $this->app->set('name-two', ['typeOf' => 'name-one']);
-        $this->assertSame('Amit Sidhpura', $this->app->get('name-two'));
-
-        /* throws exception on circular dependency */
-        $this->expectException(CircularDependencyException::class);
-        $this->app->get(ClassSix::class);
     }
 
     /* test it can set entry */
-    public function testSet() { $this->assertTrue(true); }
+    public function testSet()
+    {
+        $this->app->set('name', 'Amit Sidhpura');
+        $this->assertSame(['name' => ['instance' => 'Amit Sidhpura']], $this->app->getResources());
+    }
+
+    /* test it can get runtime definition */
+    public function testGetInjector()
+    {
+        /* test covered in testConstruct */
+        $this->assertTrue(true);
+    }
 
     /* test it can get modules */
-    public function testGetModules() { $this->assertTrue(true); }
+    public function testGetDefinition()
+    {
+        /* test covered in testConstruct */
+        $this->assertTrue(true);
+    }
+
+    /* test it can get injector */
+    public function testGetModules()
+    {
+        /* test covered in testRegisterModule */
+        $this->assertTrue(true);
+    }
 
     /* test it can get tasks */
-    public function testGetTasks() { $this->assertTrue(true); }
+    public function testGetTasks()
+    {
+        /* test covered in testRegisterTask */
+        $this->assertTrue(true);
+    }
 
     /* test it can get resources */
-    public function testGetResources() { $this->assertTrue(true); }
+    public function testGetResources()
+    {
+        /* test covered in testSet */
+        $this->assertTrue(true);
+    }
 
     /* test it can get instance stack */
     public function testGetInstanceStack() { $this->assertTrue(true); }
@@ -234,63 +206,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
     public function testCall()
     {
         $this->app->set('my-name', 'Amit Sidhpura');
+        /** @noinspection PhpUndefinedMethodInspection */
         $this->assertSame('Amit Sidhpura', $this->app->myName());
     }
-}
-
-interface InterfaceOne
-{
-}
-
-interface InterfaceTwo
-{
-}
-
-interface InterfaceThree
-{
-}
-
-interface InterfaceFour
-{
-}
-
-class ClassOne implements InterfaceOne
-{
-}
-
-class ClassTwo implements InterfaceTwo
-{
-    public $classOne;
-
-    public function __construct(InterfaceOne $classOne)
-    {
-        $this->classOne = $classOne;
-    }
-}
-
-class ClassThree implements InterfaceThree
-{
-    public $classOne;
-
-    public $name;
-
-    public function __construct(ClassOne $classOne, $name)
-    {
-        $this->classOne = $classOne;
-        $this->name = $name;
-    }
-}
-
-class ClassFour implements InterfaceOne
-{
-}
-
-class ClassFive
-{
-    public function __construct(ClassSix $classSix) { }
-}
-
-class ClassSix
-{
-    public function __construct(ClassFive $classFive) { }
 }

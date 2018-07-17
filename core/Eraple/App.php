@@ -5,7 +5,6 @@ namespace Eraple;
 use Psr\Container\ContainerInterface;
 use Zend\Di\Injector;
 use Zend\Di\Definition\RuntimeDefinition;
-use Zend\Di\Exception\CircularDependencyException;
 
 class App implements ContainerInterface
 {
@@ -179,7 +178,7 @@ class App implements ContainerInterface
     public function registerModule(string $class)
     {
         /* @var $class Module */
-        if (!$this->isValidName($class::getName())) return;
+        if (!is_subclass_of($class, Module::class) || !$this->isValidName($class::getName())) return;
 
         $this->modules[$class::getName()] = $class;
     }
@@ -192,7 +191,7 @@ class App implements ContainerInterface
     public function registerTask(string $class)
     {
         /* @var $class Task */
-        if (!$this->isValidName($class::getName())) return;
+        if (!is_subclass_of($class, Task::class) || !$this->isValidName($class::getName())) return;
 
         $this->tasks[$class::getName()] = $class;
     }
