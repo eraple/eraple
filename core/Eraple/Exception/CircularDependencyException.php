@@ -1,6 +1,6 @@
 <?php
 
-namespace Eraple;
+namespace Eraple\Exception;
 
 use Zend\Di\Exception\CircularDependencyException as ZendDiCircularDependencyException;
 

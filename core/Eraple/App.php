@@ -5,6 +5,9 @@ namespace Eraple;
 use Psr\Container\ContainerInterface;
 use Zend\Di\Injector;
 use Zend\Di\Definition\RuntimeDefinition;
+use Eraple\Exception\NotFoundException;
+use Eraple\Exception\CircularDependencyException;
+use Eraple\Exception\ContainerException;
 
 class App implements ContainerInterface
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Eraple;
+namespace Eraple\Exception;
 
 use Psr\Container\NotFoundExceptionInterface;
 
