@@ -281,23 +281,23 @@ class App implements ContainerInterface
         /* replace task */
         $replaceTasks = $this->getTasksByPosition('replace_' . $task::getName());
         $replacedTask = count($replaceTasks) ? reset($replaceTasks) : $task;
-
-        /* @var $taskClass Task */
-        $taskClass = $replacedTask;
+        $isTaskReplaced = strcmp($replacedTask::getName(), $task::getName()) !== 0;
 
         /* run tasks before task */
         $data = $this->runTasksByPosition('before_' . $task::getName(), $data);
 
         /* run tasks before replaced task */
-        $data = strcmp($replacedTask::getName(), $task::getName()) !== 0 ? $this->runTasksByPosition('before_' . $replacedTask::getName(), $data) : $data;
+        $data = $isTaskReplaced ? $this->runTasksByPosition('before_' . $replacedTask::getName(), $data) : $data;
 
         /* run task */
+        /* @var $taskClass Task */
+        $taskClass = $isTaskReplaced ? $replacedTask : $task;
         $taskClass = new $taskClass();
         $returnData = $taskClass->run($this, $data);
         $data = array_merge($data, !is_array($returnData) ? [] : $returnData);
 
         /* run tasks after replaced task */
-        $data = strcmp($replacedTask::getName(), $task::getName()) !== 0 ? $this->runTasksByPosition('after_' . $replacedTask::getName(), $data) : $data;
+        $data = $isTaskReplaced ? $this->runTasksByPosition('after_' . $replacedTask::getName(), $data) : $data;
 
         /* run tasks after task */
         $data = $this->runTasksByPosition('after_' . $task::getName(), $data);
@@ -360,8 +360,8 @@ class App implements ContainerInterface
             'getEntryInstanceByIdInterface',
             'getEntryInstanceByIdAlias'
         ];
-        $entry = (!is_null($entry)) ? $entry : $this->resources[$id];
-        $entry = (is_array($entry) && is_array($this->resources[$id])) ? array_merge($this->resources[$id], $entry) : $entry;
+        $entry = !is_null($entry) ? $entry : $this->resources[$id];
+        $entry = is_array($entry) && is_array($this->resources[$id]) ? array_merge($this->resources[$id], $entry) : $entry;
         foreach ($functions as $function) {
             $instance = $this->$function($id, $entry);
             if (!is_null($instance)) {
@@ -408,8 +408,8 @@ class App implements ContainerInterface
     protected function getEntryInstanceByIdClass(string $id, $entry)
     {
         if (class_exists($id) && is_array($entry)) {
-            $parameters = (isset($entry['parameters'])) ? $entry['parameters'] : [];
-            $preferences = (isset($entry['preferences'])) ? $entry['preferences'] : [];
+            $parameters = isset($entry['parameters']) ? $entry['parameters'] : [];
+            $preferences = isset($entry['preferences']) ? $entry['preferences'] : [];
 
             /* add preferences as parameters */
             $classParameters = $this->definition->getClassDefinition($id)->getParameters();
