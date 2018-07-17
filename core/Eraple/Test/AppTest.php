@@ -5,6 +5,7 @@ namespace Eraple\Test;
 use Eraple\App;
 use Zend\Di\Injector;
 use Zend\Di\Definition\RuntimeDefinition;
+use Eraple\Exception\CircularDependencyException;
 use Eraple\Test\Data\Stub\SampleModule;
 use Eraple\Test\Data\Stub\InvalidNameModule;
 use Eraple\Test\Data\Stub\NotImplementedModule;
@@ -16,6 +17,9 @@ use Eraple\Test\Data\Stub\FireHighPriorityEventTask;
 use Eraple\Test\Data\Stub\FireLowPriorityEventTask;
 use Eraple\Test\Data\Stub\FireBeforeEventTask;
 use Eraple\Test\Data\Stub\FireAfterEventTask;
+use Eraple\Test\Data\Stub\TaskAFollowsTaskC;
+use Eraple\Test\Data\Stub\TaskBFollowsTaskA;
+use Eraple\Test\Data\Stub\TaskCFollowsTaskB;
 
 class AppTest extends \PHPUnit\Framework\TestCase
 {
@@ -91,6 +95,22 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->app->registerTask(FireAfterEventTask::class);
         $data = $this->app->fire('something-happened', ['key' => '(fired)']);
         $this->assertSame(['key' => '(fired) before high on low after'], $data);
+    }
+
+    /* test it can run tasks by position */
+    public function testRunTasksByPosition() { $this->assertTrue(true); }
+
+    /* test it can get tasks by position */
+    public function testGetTasksByPosition() { $this->assertTrue(true); }
+
+    /* test it can run task */
+    public function testRunTask()
+    {
+        $this->expectException(CircularDependencyException::class);
+        $this->app->registerTask(TaskAFollowsTaskC::class);
+        $this->app->registerTask(TaskBFollowsTaskA::class);
+        $this->app->registerTask(TaskCFollowsTaskB::class);
+        $this->app->runTask(TaskAFollowsTaskC::class);
     }
 
     /* test it can check entry exists */

@@ -68,6 +68,13 @@ class App implements ContainerInterface
     protected $resources = [];
 
     /**
+     * Task stack.
+     *
+     * @var array
+     */
+    protected $taskStack = [];
+
+    /**
      * Instance stack.
      *
      * @var array
@@ -232,7 +239,7 @@ class App implements ContainerInterface
      *
      * @return array
      */
-    protected function runTasksByPosition(string $position, array $data = [])
+    public function runTasksByPosition(string $position, array $data = [])
     {
         foreach ($this->getTasksByPosition($position) as $task) {
             $data = array_merge($data, $this->runTask($task, $data));
@@ -248,7 +255,7 @@ class App implements ContainerInterface
      *
      * @return array
      */
-    protected function getTasksByPosition(string $position)
+    public function getTasksByPosition(string $position)
     {
         $tasks = array_filter($this->tasks, function (string $task) use ($position) {
             /* @var $task Task */
@@ -271,8 +278,11 @@ class App implements ContainerInterface
      *
      * @return array
      */
-    protected function runTask(string $task, array $data = [])
+    public function runTask(string $task, array $data = [])
     {
+        /* add stack entry */
+        $this->checkCircularDependency('taskStack', $task);
+
         /* replace task chain */
         /* @var $task Task */
         $replaceChainTasks = $this->getTasksByPosition('replace_chain_' . $task::getName());
@@ -302,7 +312,30 @@ class App implements ContainerInterface
         /* run tasks after task */
         $data = $this->runTasksByPosition('after_' . $task::getName(), $data);
 
+        /* remove stack entry */
+        array_pop($this->taskStack);
+
         return $data;
+    }
+
+    /**
+     * Check if there is circular dependency.
+     *
+     * @param string $stack Entry stack
+     * @param string $entry Entry to check
+     * @throws CircularDependencyException
+     */
+    protected function checkCircularDependency(string $stack, string $entry)
+    {
+        if (in_array($entry, $this->$stack)) {
+            throw new CircularDependencyException(sprintf(
+                'Circular dependency: %s -> %s',
+                implode(' -> ', $this->$stack),
+                $entry
+            ));
+        } else {
+            $this->$stack[] = $entry;
+        }
     }
 
     /**
@@ -339,19 +372,13 @@ class App implements ContainerInterface
 
         /* entry not found but instantiable */
         if (!isset($this->resources[$id])) {
+            array_pop($this->instanceStack);
+
             return $this->injector->create($id);
         }
 
-        /* check circular dependency */
-        if (in_array($id, $this->instanceStack)) {
-            throw new CircularDependencyException(sprintf(
-                'Circular dependency: %s -> %s',
-                implode(' -> ', $this->instanceStack),
-                $id
-            ));
-        } else {
-            $this->instanceStack[] = $id;
-        }
+        /* add stack entry */
+        $this->checkCircularDependency('instanceStack', $id);
 
         /* entry found and instantiable */
         $functions = [
