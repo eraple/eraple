@@ -68,18 +68,11 @@ class App implements ContainerInterface
     protected $resources = [];
 
     /**
-     * Task stack.
+     * Dependency stack.
      *
      * @var array
      */
-    protected $taskStack = [];
-
-    /**
-     * Instance stack.
-     *
-     * @var array
-     */
-    protected $instanceStack = [];
+    protected $dependencyStack = [];
 
     /**
      * Application constructor.
@@ -158,10 +151,9 @@ class App implements ContainerInterface
     {
         /* register tasks */
         foreach ($this->modules as $module) {
-            /* @var $moduleClass Module */
-            $moduleClass = $module;
-            $moduleClass = new $moduleClass();
-            $moduleClass->registerTasks($this);
+            /* @var $moduleInstance Module */
+            $moduleInstance = new $module();
+            $moduleInstance->registerTasks($this);
         }
     }
 
@@ -242,7 +234,7 @@ class App implements ContainerInterface
     public function runTasksByPosition(string $position, array $data = [])
     {
         foreach ($this->getTasksByPosition($position) as $task) {
-            $data = array_merge($data, $this->runTask($task, $data));
+            $data = $this->runTask($task, $data);
         }
 
         return $data;
@@ -281,39 +273,37 @@ class App implements ContainerInterface
     public function runTask(string $task, array $data = [])
     {
         /* add stack entry */
-        $this->checkCircularDependency('taskStack', $task);
+        $this->checkCircularDependency($task);
 
         /* replace task chain */
         /* @var $task Task */
         $replaceChainTasks = $this->getTasksByPosition('replace_chain_' . $task::getName());
-        $task = count($replaceChainTasks) ? reset($replaceChainTasks) : $task;
+        if (count($replaceChainTasks)) {
+            /* remove stack entry */
+            array_pop($this->dependencyStack);
 
-        /* replace task */
-        $replaceTasks = $this->getTasksByPosition('replace_' . $task::getName());
-        $replacedTask = count($replaceTasks) ? reset($replaceTasks) : $task;
-        $isTaskReplaced = strcmp($replacedTask::getName(), $task::getName()) !== 0;
+            return $this->runTask(reset($replaceChainTasks), $data);
+        }
 
         /* run tasks before task */
         $data = $this->runTasksByPosition('before_' . $task::getName(), $data);
 
-        /* run tasks before replaced task */
-        $data = $isTaskReplaced ? $this->runTasksByPosition('before_' . $replacedTask::getName(), $data) : $data;
-
-        /* run task */
-        /* @var $taskClass Task */
-        $taskClass = $isTaskReplaced ? $replacedTask : $task;
-        $taskClass = new $taskClass();
-        $returnData = $taskClass->run($this, $data);
-        $data = array_merge($data, !is_array($returnData) ? [] : $returnData);
-
-        /* run tasks after replaced task */
-        $data = $isTaskReplaced ? $this->runTasksByPosition('after_' . $replacedTask::getName(), $data) : $data;
+        /* replace or run task */
+        $replaceTasks = $this->getTasksByPosition('replace_' . $task::getName());
+        if (count($replaceTasks)) {
+            $data = $this->runTask(reset($replaceTasks), $data);
+        } else {
+            /* @var $taskInstance Task */
+            $taskInstance = new $task();
+            $returnData = $taskInstance->run($this, $data);
+            $data = is_array($returnData) ? $returnData : $data;
+        }
 
         /* run tasks after task */
         $data = $this->runTasksByPosition('after_' . $task::getName(), $data);
 
         /* remove stack entry */
-        array_pop($this->taskStack);
+        array_pop($this->dependencyStack);
 
         return $data;
     }
@@ -321,20 +311,19 @@ class App implements ContainerInterface
     /**
      * Check if there is circular dependency.
      *
-     * @param string $stack Entry stack
      * @param string $entry Entry to check
      * @throws CircularDependencyException
      */
-    protected function checkCircularDependency(string $stack, string $entry)
+    protected function checkCircularDependency(string $entry)
     {
-        if (in_array($entry, $this->$stack)) {
+        if (in_array($entry, $this->dependencyStack)) {
             throw new CircularDependencyException(sprintf(
                 'Circular dependency: %s -> %s',
-                implode(' -> ', $this->$stack),
+                implode(' -> ', $this->dependencyStack),
                 $entry
             ));
         } else {
-            $this->$stack[] = $entry;
+            $this->dependencyStack[] = $entry;
         }
     }
 
@@ -365,6 +354,9 @@ class App implements ContainerInterface
      */
     public function get($id, $entry = null)
     {
+        /* add stack entry */
+        $this->checkCircularDependency($id);
+
         /* entry not found and not instantiable */
         if (!$this->has($id)) {
             throw new NotFoundException();
@@ -372,13 +364,11 @@ class App implements ContainerInterface
 
         /* entry not found but instantiable */
         if (!isset($this->resources[$id])) {
-            array_pop($this->instanceStack);
+            /* remove stack entry */
+            array_pop($this->dependencyStack);
 
             return $this->injector->create($id);
         }
-
-        /* add stack entry */
-        $this->checkCircularDependency('instanceStack', $id);
 
         /* entry found and instantiable */
         $functions = [
@@ -392,7 +382,8 @@ class App implements ContainerInterface
         foreach ($functions as $function) {
             $instance = $this->$function($id, $entry);
             if (!is_null($instance)) {
-                array_pop($this->instanceStack);
+                /* remove stack entry */
+                array_pop($this->dependencyStack);
 
                 return $instance;
             }
@@ -595,9 +586,9 @@ class App implements ContainerInterface
      *
      * @return array
      */
-    public function getInstanceStack()
+    public function getDependencyStack()
     {
-        return $this->instanceStack;
+        return $this->dependencyStack;
     }
 
     /**
@@ -608,7 +599,7 @@ class App implements ContainerInterface
         $this->modules = [];
         $this->tasks = [];
         $this->resources = [];
-        $this->instanceStack = [];
+        $this->dependencyStack = [];
     }
 
     /**
