@@ -225,20 +225,25 @@ class App implements ContainerInterface
      */
     public function set(string $id, $entry)
     {
+        /* id is not class or interface */
+        $entryIsNotClassAndInterface = !class_exists($id) && !interface_exists($id);
+
         /* discard entry with invalid name */
-        if (!class_exists($id) && !interface_exists($id) && !$this->isNameValid($id)) return $this;
+        if ($entryIsNotClassAndInterface && !$this->isNameValid($id)) return $this;
+
+        /* id is not alias or instance */
+        $idIsNotAliasAndInstance = (!is_array($entry) || (!isset($entry['typeOf']) && !isset($entry['instance'])));
 
         /* process entry with id as key and entry as value */
-        if (!class_exists($id) && !interface_exists($id)
-            && (!is_array($entry) || (!isset($entry['typeOf']) && !isset($entry['instance'])))) {
-            $entry = ['instance' => $entry];
-        }
+        if ($idIsNotAliasAndInstance && $idIsNotAliasAndInstance) $entry = ['instance' => $entry];
+
+        /* id is interface and entry is class */
+        $idIsInterfaceAndEntryIsClass = interface_exists($id) && is_string($entry) && class_exists($entry);
 
         /* process entry with id as interface and entry as class */
-        if (interface_exists($id) && is_string($entry) && class_exists($entry)) {
-            $entry = ['concrete' => $entry];
-        }
+        if ($idIsInterfaceAndEntryIsClass) $entry = ['concrete' => $entry];
 
+        /* set resource to the application */
         $this->resources[$id] = $entry;
 
         return $this;
@@ -253,9 +258,7 @@ class App implements ContainerInterface
      */
     public function has($id)
     {
-        if (isset($this->resources[$id])) {
-            return true;
-        }
+        if (isset($this->resources[$id])) return true;
 
         return $this->injector->canCreate($id);
     }
@@ -275,9 +278,7 @@ class App implements ContainerInterface
         $this->isEntryCircularDependent('instance', $id);
 
         /* entry not found and not instantiable */
-        if (!$this->has($id)) {
-            throw new NotFoundException();
-        }
+        if (!$this->has($id)) throw new NotFoundException();
 
         /* entry not found but instantiable */
         if (!isset($this->resources[$id])) {
@@ -288,12 +289,7 @@ class App implements ContainerInterface
         }
 
         /* entry found and instantiable */
-        $functions = [
-            'getEntryInstanceByIdKey',
-            'getEntryInstanceByIdClass',
-            'getEntryInstanceByIdInterface',
-            'getEntryInstanceByIdAlias'
-        ];
+        $functions = ['getEntryInstanceByIdKey', 'getEntryInstanceByIdClass', 'getEntryInstanceByIdInterface', 'getEntryInstanceByIdAlias'];
         $entry = !is_null($entry) ? $entry : $this->resources[$id];
         $entry = is_array($entry) && is_array($this->resources[$id]) ? array_merge($this->resources[$id], $entry) : $entry;
         foreach ($functions as $function) {
@@ -350,24 +346,16 @@ class App implements ContainerInterface
             $classParameters = $this->definition->getClassDefinition($id)->getParameters();
             foreach ($classParameters as $classParameter) {
                 $classParameterName = $classParameter->getName();
+                if (isset($parameters[$classParameterName])) continue;
                 $classParameterType = $classParameter->getType();
-
-                if (isset($parameters[$classParameterName])) {
-                    continue;
-                }
-
-                if (isset($preferences[$classParameterType])) {
-                    $parameters[$classParameterName] = $this->get($preferences[$classParameterType]);
-                }
+                if (isset($preferences[$classParameterType])) $parameters[$classParameterName] = $this->get($preferences[$classParameterType]);
             }
 
             /* create class instance with parameters */
             $instance = $this->injector->create($id, $parameters);
 
             /* save instance to resources if singleton is true */
-            if (isset($entry['singleton']) && $entry['singleton'] === true) {
-                $this->resources[$id]['instance'] = $instance;
-            }
+            if (isset($entry['singleton']) && $entry['singleton'] === true) $this->resources[$id]['instance'] = $instance;
 
             return $instance;
         }
@@ -630,7 +618,8 @@ class App implements ContainerInterface
      * Check if there is circular dependency.
      *
      * @param string $stackId Unique stack id
-     * @param   string $entry Entry to check
+     * @param string $entry Entry to check
+     *
      * @throws CircularDependencyException
      */
     public function isEntryCircularDependent(string $stackId, string $entry)
@@ -652,8 +641,8 @@ class App implements ContainerInterface
     /**
      * Convert string with delimiters to camelcase.
      *
-     * @param string $string
-     * @param string $delimiter
+     * @param string $string String to convert to camelcase
+     * @param string $delimiter Delimiter to replace
      *
      * @return string
      */
@@ -665,8 +654,8 @@ class App implements ContainerInterface
     /**
      * Convert camelcase string to delimiters string.
      *
-     * @param string $string
-     * @param string $delimiter
+     * @param string $string String to convert to delimiter string
+     * @param string $delimiter Delimiter to use
      *
      * @return string
      */
