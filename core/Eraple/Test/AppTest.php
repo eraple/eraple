@@ -15,8 +15,6 @@ use Eraple\Test\Data\Stub\NotImplementedTask;
 use Eraple\Test\Data\Stub\FireEventTask;
 use Eraple\Test\Data\Stub\FireHighPriorityEventTask;
 use Eraple\Test\Data\Stub\FireLowPriorityEventTask;
-use Eraple\Test\Data\Stub\FireBeforeEventTask;
-use Eraple\Test\Data\Stub\FireAfterEventTask;
 use Eraple\Test\Data\Stub\TaskAFollowsTaskC;
 use Eraple\Test\Data\Stub\TaskBFollowsTaskA;
 use Eraple\Test\Data\Stub\TaskCFollowsTaskB;
@@ -80,37 +78,14 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertSame(['sample-task' => SampleTask::class], $this->app->getTasks());
     }
 
-    /* test it can fire event */
-    public function testFire()
+    /* test it can register resource */
+    public function testRegisterResource() { $this->assertTrue(true); }
+
+    /* test it can set entry */
+    public function testSet()
     {
-        /* test sequence of tasks based on priority and event */
-        $this->app->registerTask(FireLowPriorityEventTask::class);
-        $this->app->registerTask(FireHighPriorityEventTask::class);
-        $this->app->registerTask(FireEventTask::class);
-        $data = $this->app->fire('something-happened', ['key' => '(fired)']);
-        $this->assertSame(['key' => '(fired) high on low'], $data);
-
-        /* test sequence of tasks based on before and after event */
-        $this->app->registerTask(FireBeforeEventTask::class);
-        $this->app->registerTask(FireAfterEventTask::class);
-        $data = $this->app->fire('something-happened', ['key' => '(fired)']);
-        $this->assertSame(['key' => '(fired) before high on low after'], $data);
-    }
-
-    /* test it can run tasks by position */
-    public function testRunTasksByPosition() { $this->assertTrue(true); }
-
-    /* test it can get tasks by position */
-    public function testGetTasksByPosition() { $this->assertTrue(true); }
-
-    /* test it can run task */
-    public function testRunTask()
-    {
-        $this->expectException(CircularDependencyException::class);
-        $this->app->registerTask(TaskAFollowsTaskC::class);
-        $this->app->registerTask(TaskBFollowsTaskA::class);
-        $this->app->registerTask(TaskCFollowsTaskB::class);
-        $this->app->runTask(TaskAFollowsTaskC::class);
+        $this->app->set('name', 'Amit Sidhpura');
+        $this->assertSame(['name' => ['instance' => 'Amit Sidhpura']], $this->app->getResources());
     }
 
     /* test it can check entry exists */
@@ -128,11 +103,25 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertSame('Amit Sidhpura', $this->app->get('name'));
     }
 
-    /* test it can set entry */
-    public function testSet()
+    /* test it can fire event */
+    public function testFire()
     {
-        $this->app->set('name', 'Amit Sidhpura');
-        $this->assertSame(['name' => ['instance' => 'Amit Sidhpura']], $this->app->getResources());
+        /* test sequence of tasks based on priority and event */
+        $this->app->registerTask(FireLowPriorityEventTask::class);
+        $this->app->registerTask(FireHighPriorityEventTask::class);
+        $this->app->registerTask(FireEventTask::class);
+        $data = $this->app->fire('something-happened', ['key' => '(fired)']);
+        $this->assertSame(['key' => '(fired) high on low'], $data);
+    }
+
+    /* test it can run task */
+    public function testRunTask()
+    {
+        $this->expectException(CircularDependencyException::class);
+        $this->app->registerTask(TaskAFollowsTaskC::class);
+        $this->app->registerTask(TaskBFollowsTaskA::class);
+        $this->app->registerTask(TaskCFollowsTaskB::class);
+        $this->app->runTask(TaskAFollowsTaskC::class);
     }
 
     /* test it can get runtime definition */
@@ -170,8 +159,8 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertTrue(true);
     }
 
-    /* test it can get instance stack */
-    public function testGetInstanceStack() { $this->assertTrue(true); }
+    /* test it can get dependency stack */
+    public function testGetDependencyStack() { $this->assertTrue(true); }
 
     /* test it can flush all modules, tasks, resources and instance stack of the application */
     public function testFlush() { $this->assertTrue(true); }
@@ -195,16 +184,19 @@ class AppTest extends \PHPUnit\Framework\TestCase
     }
 
     /* test it can check whether given name is valid module, task or event name */
-    public function testIsValidName()
+    public function testIsNameValid()
     {
-        $this->assertTrue($this->app->isValidName('task'));
-        $this->assertTrue($this->app->isValidName('task-one'));
-        $this->assertTrue($this->app->isValidName('task-123'));
-        $this->assertFalse($this->app->isValidName(''));
-        $this->assertFalse($this->app->isValidName('am'));
-        $this->assertFalse($this->app->isValidName('Task-one'));
-        $this->assertFalse($this->app->isValidName('task_one'));
+        $this->assertTrue($this->app->isNameValid('task'));
+        $this->assertTrue($this->app->isNameValid('task-one'));
+        $this->assertTrue($this->app->isNameValid('task-123'));
+        $this->assertFalse($this->app->isNameValid(''));
+        $this->assertFalse($this->app->isNameValid('am'));
+        $this->assertFalse($this->app->isNameValid('Task-one'));
+        $this->assertFalse($this->app->isNameValid('task_one'));
     }
+
+    /* test it can check whether entry is circular dependent */
+    public function testIsEntryCircularDependent() { $this->assertTrue(true); }
 
     /* test it can convert delimiters string to camelcase string */
     public function testCamelize()
@@ -220,13 +212,5 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertSame('task-one', $this->app->uncamelize('taskOne'));
         $this->assertSame('task_one', $this->app->uncamelize('taskOne', '_'));
         $this->assertSame('taskone', $this->app->uncamelize('taskone'));
-    }
-
-    /* test it can get resource with name and arguments */
-    public function testCall()
-    {
-        $this->app->set('my-name', 'Amit Sidhpura');
-        /** @noinspection PhpUndefinedMethodInspection */
-        $this->assertSame('Amit Sidhpura', $this->app->myName());
     }
 }

@@ -7,9 +7,9 @@ use Eraple\Task;
 
 class TaskBFollowsTaskA extends Task
 {
-    protected static $name = 'task-b-follows-task-a';
+    protected static $name = 'b-follows-task-a';
 
-    protected static $position = 'after_task-a-follows-task-c';
+    protected static $position = 'after-task-a-follows-task-c';
 
     public function run(App $app, array $data = [])
     {

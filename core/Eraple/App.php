@@ -120,8 +120,12 @@ class App implements ContainerInterface
         $this->registerModules();
         $this->registerTasks();
         $this->registerResources();
+        $this->fire('before-start');
         $this->fire('start');
+        $this->fire('after-start');
+        $this->fire('before-end');
         $this->fire('end');
+        $this->fire('after-end');
     }
 
     /**
@@ -180,7 +184,7 @@ class App implements ContainerInterface
     public function registerModule(string $class)
     {
         /* @var $class Module::class */
-        if (!is_subclass_of($class, Module::class) || !$this->isValidName($class::getName())) return;
+        if (!is_subclass_of($class, Module::class) || !$this->isNameValid($class::getName())) return;
 
         $this->modules[$class::getName()] = $class;
     }
@@ -193,141 +197,51 @@ class App implements ContainerInterface
     public function registerTask(string $class)
     {
         /* @var $class Task::class */
-        if (!is_subclass_of($class, Task::class) || !$this->isValidName($class::getName())) return;
+        if (!is_subclass_of($class, Task::class) || !$this->isNameValid($class::getName())) return;
 
         $this->tasks[$class::getName()] = $class;
     }
 
     /**
-     * Fire an event and run all associated tasks.
+     * Set an entry to the application.
      *
-     * @param string $event Name of the event
-     * @param  array $data Data passed to the task
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
      *
-     * @return array
+     * @return $this
      */
-    public function fire(string $event, array $data = [])
+    public function registerResource(string $id, $entry)
     {
-        /* return if event name is not valid */
-        if (!$this->isValidName($event)) return $data;
-
-        /* run tasks before event */
-        $data = $this->runTasksByPosition('event_before_' . $event, $data);
-
-        /* run tasks on event */
-        $data = $this->runTasksByPosition('event_' . $event, $data);
-
-        /* run tasks after event */
-        $data = $this->runTasksByPosition('event_after_' . $event, $data);
-
-        return $data;
+        return $this->set($id, $entry);
     }
 
     /**
-     * Run tasks by position.
+     * Set an entry to the application.
      *
-     * @param string $position Position of the task
-     * @param  array $data Data passed to the task
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
      *
-     * @return array
+     * @return $this
      */
-    public function runTasksByPosition(string $position, array $data = [])
+    public function set(string $id, $entry)
     {
-        foreach ($this->getTasksByPosition($position) as $task) {
-            $data = $this->runTask($task, $data);
+        /* discard entry with invalid name */
+        if (!class_exists($id) && !interface_exists($id) && !$this->isNameValid($id)) return $this;
+
+        /* process entry with id as key and entry as value */
+        if (!class_exists($id) && !interface_exists($id)
+            && (!is_array($entry) || (!isset($entry['typeOf']) && !isset($entry['instance'])))) {
+            $entry = ['instance' => $entry];
         }
 
-        return $data;
-    }
-
-    /**
-     * Get tasks by position.
-     *
-     * @param string $position Position of the task
-     *
-     * @return array
-     */
-    public function getTasksByPosition(string $position)
-    {
-        $tasks = array_filter($this->tasks, function (string $task) use ($position) {
-            /* @var $task Task::class */
-            return $task::getPosition() === $position;
-        });
-        usort($tasks, function (string $task1, string $task2) {
-            /* @var $task1 Task::class */
-            /* @var $task2 Task::class */
-            return $task1::getPriority() < $task2::getPriority();
-        });
-
-        return $tasks;
-    }
-
-    /**
-     * Run task with related tasks.
-     *
-     * @param string $task Task to run
-     * @param  array $data Data passed to the task
-     *
-     * @return array
-     */
-    public function runTask(string $task, array $data = [])
-    {
-        /* @var $task Task::class */
-
-        /* add stack entry */
-        $this->checkCircularDependency('task', $task);
-
-        /* replace task chain */
-        if (count($replaceChainTasks = $this->getTasksByPosition('replace_chain_' . $task::getName()))) {
-            /* remove stack entry */
-            array_pop($this->dependencyStack['task']);
-
-            return $this->runTask(reset($replaceChainTasks), $data);
+        /* process entry with id as interface and entry as class */
+        if (interface_exists($id) && is_string($entry) && class_exists($entry)) {
+            $entry = ['concrete' => $entry];
         }
 
-        /* run tasks before task */
-        $data = $this->runTasksByPosition('before_' . $task::getName(), $data);
+        $this->resources[$id] = $entry;
 
-        /* run replaced task or task */
-        if (count($replaceTasks = $this->getTasksByPosition('replace_' . $task::getName()))) {
-            $data = $this->runTask(reset($replaceTasks), $data);
-        } else {
-            /* @var $taskInstance Task */
-            $taskInstance = new $task();
-            $returnData = $taskInstance->run($this, $data);
-            $data = is_array($returnData) ? $returnData : $data;
-        }
-
-        /* run tasks after task */
-        $data = $this->runTasksByPosition('after_' . $task::getName(), $data);
-
-        /* remove stack entry */
-        array_pop($this->dependencyStack['task']);
-
-        return $data;
-    }
-
-    /**
-     * Check if there is circular dependency.
-     *
-     * @param string $stackId Unique stack id
-     * @param   string $entry Entry to check
-     * @throws CircularDependencyException
-     */
-    protected function checkCircularDependency(string $stackId, string $entry)
-    {
-        if (!isset($this->dependencyStack[$stackId])) $this->dependencyStack[$stackId] = [];
-
-        if (in_array($entry, $this->dependencyStack[$stackId])) {
-            throw new CircularDependencyException(sprintf(
-                'Circular dependency of stack "%s": %s -> %s',
-                $stackId,
-                implode(' -> ', $this->dependencyStack[$stackId]),
-                $entry
-            ));
-        } else {
-            $this->dependencyStack[$stackId][] = $entry;
-        }
+        return $this;
     }
 
     /**
@@ -358,7 +272,7 @@ class App implements ContainerInterface
     public function get($id, $entry = null)
     {
         /* add stack entry */
-        $this->checkCircularDependency('instance', $id);
+        $this->isEntryCircularDependent('instance', $id);
 
         /* entry not found and not instantiable */
         if (!$this->has($id)) {
@@ -506,32 +420,64 @@ class App implements ContainerInterface
     }
 
     /**
-     * Set an entry to the application.
+     * Fire an event and run all associated tasks.
      *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
+     * @param string $event Name of the event
+     * @param  array $data Data passed to the task
      *
-     * @return $this
+     * @return array
      */
-    public function set(string $id, $entry)
+    public function fire(string $event, array $data = [])
     {
-        /* discard entry with invalid name */
-        if (!class_exists($id) && !interface_exists($id) && !$this->isValidName($id)) return $this;
+        /* return if event name is not valid */
+        if (!$this->isNameValid($event)) return $data;
 
-        /* process entry with id as key and entry as value */
-        if (!class_exists($id) && !interface_exists($id)
-            && (!is_array($entry) || (!isset($entry['typeOf']) && !isset($entry['instance'])))) {
-            $entry = ['instance' => $entry];
+        /* run tasks on event */
+        foreach ($this->getTasks(['position' => $event], 'and', 'priority', 'dsc') as $task) {
+            $data = $this->runTask($task, $data);
         }
 
-        /* process entry with id as interface and entry as class */
-        if (interface_exists($id) && is_string($entry) && class_exists($entry)) {
-            $entry = ['concrete' => $entry];
+        return $data;
+    }
+
+    /**
+     * Run task with related tasks.
+     *
+     * @param string $task Task to run
+     * @param  array $data Data passed to the task
+     *
+     * @return array
+     */
+    public function runTask(string $task, array $data = [])
+    {
+        /* add stack entry */
+        $this->isEntryCircularDependent('task', $task);
+
+        /* replace task chain */
+        /* @var $task Task::class */
+        if (count($replacementTasks = $this->getTasks(['position' => 'replace-task-' . $task::getName()], 'and', 'priority'))) {
+            /* remove stack entry */
+            array_pop($this->dependencyStack['task']);
+
+            return $this->runTask(reset($replacementTasks), $data);
         }
 
-        $this->resources[$id] = $entry;
+        /* run tasks before task */
+        $data = $this->fire('before-task-' . $task::getName(), $data);
 
-        return $this;
+        /* run replaced task or task */
+        /* @var $taskInstance Task */
+        $taskInstance = new $task();
+        $returnData = $taskInstance->run($this, $data);
+        $data = is_array($returnData) ? $returnData : $data;
+
+        /* run tasks after task */
+        $data = $this->fire('after-task-' . $task::getName(), $data);
+
+        /* remove stack entry */
+        array_pop($this->dependencyStack['task']);
+
+        return $data;
     }
 
     /**
@@ -567,11 +513,40 @@ class App implements ContainerInterface
     /**
      * Get all the tasks registered to the application.
      *
+     * @param  array $filterBy Filter fields array
+     * @param string $filterCondition Filter condition "and" or "or"
+     * @param string $orderBy Order by field
+     * @param string $order Ascending "asc" or descending "dsc" order
+     *
      * @return Task[]
      */
-    public function getTasks()
+    public function getTasks($filterBy = [], $filterCondition = 'and', $orderBy = null, $order = 'asc')
     {
-        return $this->tasks;
+        $tasks = $this->tasks;
+
+        /* filter tasks */
+        if (count($filterBy)) {
+            $tasks = array_filter($tasks, function (string $task) use ($filterBy, $filterCondition) {
+                /* @var $task Task::class */
+                $areNamesEqual = isset($filterBy['name']) ? $task::getName() === $filterBy['name'] : $filterCondition === 'and';
+                $arePositionsEqual = isset($filterBy['position']) ? $task::getPosition() === $filterBy['position'] : $filterCondition === 'and';
+
+                return $filterCondition === 'and' ? $areNamesEqual && $arePositionsEqual : $areNamesEqual || $arePositionsEqual;
+            });
+        }
+
+        /* order tasks */
+        if ($order !== null) {
+            uasort($tasks, function (string $task1, string $task2) use ($orderBy, $order) {
+                /* @var $task1 Task */
+                /* @var $task2 Task */
+                return $orderBy === 'name'
+                    ? ($order === 'asc' ? $task1::getName() > $task2::getName() : $task1::getName() < $task2::getName())
+                    : ($order === 'asc' ? $task1::getPriority() > $task2::getPriority() : $task1::getPriority() < $task2::getPriority());
+            });
+        }
+
+        return $tasks;
     }
 
     /**
@@ -642,13 +617,36 @@ class App implements ContainerInterface
      *
      * @return bool
      */
-    public function isValidName(string $name)
+    public function isNameValid(string $name)
     {
         if (!empty($name) && preg_match('/^[0-9a-z-]{3,255}$/', $name)) {
             return true;
         }
 
         return false;
+    }
+
+    /**
+     * Check if there is circular dependency.
+     *
+     * @param string $stackId Unique stack id
+     * @param   string $entry Entry to check
+     * @throws CircularDependencyException
+     */
+    public function isEntryCircularDependent(string $stackId, string $entry)
+    {
+        if (!isset($this->dependencyStack[$stackId])) $this->dependencyStack[$stackId] = [];
+
+        if (in_array($entry, $this->dependencyStack[$stackId])) {
+            throw new CircularDependencyException(sprintf(
+                'Circular dependency of stack "%s": %s -> %s',
+                $stackId,
+                implode(' -> ', $this->dependencyStack[$stackId]),
+                $entry
+            ));
+        } else {
+            $this->dependencyStack[$stackId][] = $entry;
+        }
     }
 
     /**
@@ -675,19 +673,5 @@ class App implements ContainerInterface
     public function uncamelize(string $string, string $delimiter = '-')
     {
         return strtolower(preg_replace('/([a-z])([A-Z])/', '\\1' . $delimiter . '\\2', $string));
-    }
-
-    /**
-     * Access resource instance by name and arguments.
-     *
-     * @param string $name Name of the resource
-     * @param  array $arguments
-     *
-     * @return mixed
-     * @throws NotFoundException|ContainerException
-     */
-    public function __call(string $name, $arguments)
-    {
-        return $this->get($this->uncamelize($name));
     }
 }
