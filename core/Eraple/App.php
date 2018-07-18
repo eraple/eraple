@@ -179,7 +179,7 @@ class App implements ContainerInterface
      */
     public function registerModule(string $class)
     {
-        /* @var $class Module */
+        /* @var $class Module::class */
         if (!is_subclass_of($class, Module::class) || !$this->isValidName($class::getName())) return;
 
         $this->modules[$class::getName()] = $class;
@@ -192,7 +192,7 @@ class App implements ContainerInterface
      */
     public function registerTask(string $class)
     {
-        /* @var $class Task */
+        /* @var $class Task::class */
         if (!is_subclass_of($class, Task::class) || !$this->isValidName($class::getName())) return;
 
         $this->tasks[$class::getName()] = $class;
@@ -250,12 +250,12 @@ class App implements ContainerInterface
     public function getTasksByPosition(string $position)
     {
         $tasks = array_filter($this->tasks, function (string $task) use ($position) {
-            /* @var $task Task */
+            /* @var $task Task::class */
             return $task::getPosition() === $position;
         });
         usort($tasks, function (string $task1, string $task2) {
-            /* @var $task1 Task */
-            /* @var $task2 Task */
+            /* @var $task1 Task::class */
+            /* @var $task2 Task::class */
             return $task1::getPriority() < $task2::getPriority();
         });
 
@@ -272,15 +272,15 @@ class App implements ContainerInterface
      */
     public function runTask(string $task, array $data = [])
     {
+        /* @var $task Task::class */
+
         /* add stack entry */
-        $this->checkCircularDependency($task);
+        $this->checkCircularDependency('task', $task);
 
         /* replace task chain */
-        /* @var $task Task */
-        $replaceChainTasks = $this->getTasksByPosition('replace_chain_' . $task::getName());
-        if (count($replaceChainTasks)) {
+        if (count($replaceChainTasks = $this->getTasksByPosition('replace_chain_' . $task::getName()))) {
             /* remove stack entry */
-            array_pop($this->dependencyStack);
+            array_pop($this->dependencyStack['task']);
 
             return $this->runTask(reset($replaceChainTasks), $data);
         }
@@ -288,9 +288,8 @@ class App implements ContainerInterface
         /* run tasks before task */
         $data = $this->runTasksByPosition('before_' . $task::getName(), $data);
 
-        /* replace or run task */
-        $replaceTasks = $this->getTasksByPosition('replace_' . $task::getName());
-        if (count($replaceTasks)) {
+        /* run replaced task or task */
+        if (count($replaceTasks = $this->getTasksByPosition('replace_' . $task::getName()))) {
             $data = $this->runTask(reset($replaceTasks), $data);
         } else {
             /* @var $taskInstance Task */
@@ -303,7 +302,7 @@ class App implements ContainerInterface
         $data = $this->runTasksByPosition('after_' . $task::getName(), $data);
 
         /* remove stack entry */
-        array_pop($this->dependencyStack);
+        array_pop($this->dependencyStack['task']);
 
         return $data;
     }
@@ -311,19 +310,23 @@ class App implements ContainerInterface
     /**
      * Check if there is circular dependency.
      *
-     * @param string $entry Entry to check
+     * @param string $stackId Unique stack id
+     * @param   string $entry Entry to check
      * @throws CircularDependencyException
      */
-    protected function checkCircularDependency(string $entry)
+    protected function checkCircularDependency(string $stackId, string $entry)
     {
-        if (in_array($entry, $this->dependencyStack)) {
+        if (!isset($this->dependencyStack[$stackId])) $this->dependencyStack[$stackId] = [];
+
+        if (in_array($entry, $this->dependencyStack[$stackId])) {
             throw new CircularDependencyException(sprintf(
-                'Circular dependency: %s -> %s',
-                implode(' -> ', $this->dependencyStack),
+                'Circular dependency of stack "%s": %s -> %s',
+                $stackId,
+                implode(' -> ', $this->dependencyStack[$stackId]),
                 $entry
             ));
         } else {
-            $this->dependencyStack[] = $entry;
+            $this->dependencyStack[$stackId][] = $entry;
         }
     }
 
@@ -355,7 +358,7 @@ class App implements ContainerInterface
     public function get($id, $entry = null)
     {
         /* add stack entry */
-        $this->checkCircularDependency($id);
+        $this->checkCircularDependency('instance', $id);
 
         /* entry not found and not instantiable */
         if (!$this->has($id)) {
@@ -365,7 +368,7 @@ class App implements ContainerInterface
         /* entry not found but instantiable */
         if (!isset($this->resources[$id])) {
             /* remove stack entry */
-            array_pop($this->dependencyStack);
+            array_pop($this->dependencyStack['instance']);
 
             return $this->injector->create($id);
         }
@@ -383,7 +386,7 @@ class App implements ContainerInterface
             $instance = $this->$function($id, $entry);
             if (!is_null($instance)) {
                 /* remove stack entry */
-                array_pop($this->dependencyStack);
+                array_pop($this->dependencyStack['instance']);
 
                 return $instance;
             }
