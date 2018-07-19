@@ -12,6 +12,13 @@ abstract class Module
     protected static $name = '';
 
     /**
+     * Module version.
+     *
+     * @var string
+     */
+    protected static $version = '';
+
+    /**
      * Module description.
      *
      * @var string
@@ -26,6 +33,16 @@ abstract class Module
     public static function getName()
     {
         return static::$name;
+    }
+
+    /**
+     * Get the module version.
+     *
+     * @return string
+     */
+    public static function getVersion()
+    {
+        return static::$version;
     }
 
     /**

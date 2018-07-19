@@ -13,7 +13,7 @@ class TaskEight extends Task
 
     protected static $event = 'replace_task-four';
 
-    protected static $priority = 2;
+    protected static $index = 2;
 
     public function run(App $app, array $data = [])
     {

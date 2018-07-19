@@ -421,7 +421,7 @@ class App implements ContainerInterface
         if (!$this->isNameValid($event)) return $data;
 
         /* run tasks on event */
-        foreach ($this->getTasks(['event' => $event], 'and', 'priority', 'dsc') as $task) {
+        foreach ($this->getTasks(['event' => $event], 'and', 'index') as $task) {
             $data = $this->runTask($task, $data);
         }
 
@@ -443,7 +443,7 @@ class App implements ContainerInterface
 
         /* replace task chain */
         /* @var $task Task::class */
-        if (count($replacementTasks = $this->getTasks(['event' => 'replace-task-' . $task::getName()], 'and', 'priority'))) {
+        if (count($replacementTasks = $this->getTasks(['event' => 'replace-task-' . $task::getName()], 'and', 'index'))) {
             /* remove stack entry */
             array_pop($this->dependencyStack['task']);
 
@@ -530,7 +530,7 @@ class App implements ContainerInterface
                 /* @var $task2 Task */
                 return $orderBy === 'name'
                     ? ($order === 'asc' ? $task1::getName() > $task2::getName() : $task1::getName() < $task2::getName())
-                    : ($order === 'asc' ? $task1::getPriority() > $task2::getPriority() : $task1::getPriority() < $task2::getPriority());
+                    : ($order === 'asc' ? $task1::getIndex() > $task2::getIndex() : $task1::getIndex() < $task2::getIndex());
             });
         }
 

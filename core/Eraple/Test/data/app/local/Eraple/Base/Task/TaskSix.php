@@ -13,7 +13,7 @@ class TaskSix extends Task
 
     protected static $event = 'event_before_just-an-event';
 
-    protected static $priority = 2;
+    protected static $index = 2;
 
     public function run(App $app, array $data = [])
     {

@@ -11,7 +11,7 @@ class FireEventTask extends Task
 
     protected static $event = 'something-happened';
 
-    protected static $priority = 0;
+    protected static $index = 0;
 
     public function run(App $app, array $data = [])
     {

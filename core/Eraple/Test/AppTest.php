@@ -13,8 +13,8 @@ use Eraple\Test\Data\Stub\SampleTask;
 use Eraple\Test\Data\Stub\InvalidNameTask;
 use Eraple\Test\Data\Stub\NotImplementedTask;
 use Eraple\Test\Data\Stub\FireEventTask;
-use Eraple\Test\Data\Stub\FireHighPriorityEventTask;
-use Eraple\Test\Data\Stub\FireLowPriorityEventTask;
+use Eraple\Test\Data\Stub\FireHighIndexEventTask;
+use Eraple\Test\Data\Stub\FireLowIndexEventTask;
 use Eraple\Test\Data\Stub\TaskAFollowsTaskC;
 use Eraple\Test\Data\Stub\TaskBFollowsTaskA;
 use Eraple\Test\Data\Stub\TaskCFollowsTaskB;
@@ -106,12 +106,12 @@ class AppTest extends \PHPUnit\Framework\TestCase
     /* test it can fire event */
     public function testFire()
     {
-        /* test sequence of tasks based on priority and event */
-        $this->app->registerTask(FireLowPriorityEventTask::class);
-        $this->app->registerTask(FireHighPriorityEventTask::class);
+        /* test sequence of tasks based on index and event */
+        $this->app->registerTask(FireLowIndexEventTask::class);
+        $this->app->registerTask(FireHighIndexEventTask::class);
         $this->app->registerTask(FireEventTask::class);
         $data = $this->app->fire('something-happened', ['key' => '(fired)']);
-        $this->assertSame(['key' => '(fired) high on low'], $data);
+        $this->assertSame(['key' => '(fired) low on high'], $data);
     }
 
     /* test it can run task */

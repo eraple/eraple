@@ -13,7 +13,7 @@ class TaskFive extends Task
 
     protected static $event = 'after_task-three';
 
-    protected static $priority = 2;
+    protected static $index = 2;
 
     public function run(App $app, array $data = [])
     {

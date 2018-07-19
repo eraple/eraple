@@ -16,6 +16,8 @@ class Module extends \Eraple\Module
 {
     protected static $name = 'base';
 
+    protected static $version = '1.0.0';
+
     protected static $description = 'I will handle the base functions.';
 
     public function registerTasks(App $app)

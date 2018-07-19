@@ -13,7 +13,7 @@ class TaskTwo extends Task
 
     protected static $event = 'event_just-an-event';
 
-    protected static $priority = 1;
+    protected static $index = 1;
 
     public function run(App $app, array $data = [])
     {

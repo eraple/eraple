@@ -23,14 +23,14 @@ abstract class Task
      *
      * @var string
      */
-    protected static $event = 'event_before_end';
+    protected static $event = 'before-end';
 
     /**
-     * Task priority.
+     * Task index.
      *
      * @var int
      */
-    protected static $priority = 0;
+    protected static $index = 0;
 
     /**
      * Task services.
@@ -70,13 +70,13 @@ abstract class Task
     }
 
     /**
-     * Get the task priority.
+     * Get the task index.
      *
      * @return int
      */
-    public static function getPriority()
+    public static function getIndex()
     {
-        return static::$priority;
+        return static::$index;
     }
 
     /**

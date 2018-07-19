@@ -13,7 +13,7 @@ class TaskOne extends Task
 
     protected static $event = 'after_task-seven';
 
-    protected static $priority = 0;
+    protected static $index = 0;
 
     public function run(App $app, array $data = [])
     {
