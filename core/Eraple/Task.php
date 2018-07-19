@@ -33,11 +33,11 @@ abstract class Task
     protected static $priority = 0;
 
     /**
-     * Task resources.
+     * Task services.
      *
      * @var array
      */
-    protected static $resources = [];
+    protected static $services = [];
 
     /**
      * Get the task name.
@@ -80,11 +80,11 @@ abstract class Task
     }
 
     /**
-     * Get the task resources.
+     * Get the task services.
      */
-    public static function getResources()
+    public static function getServices()
     {
-        return static::$resources;
+        return static::$services;
     }
 
     /**

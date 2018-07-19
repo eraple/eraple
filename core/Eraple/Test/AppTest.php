@@ -78,14 +78,14 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertSame(['sample-task' => SampleTask::class], $this->app->getTasks());
     }
 
-    /* test it can register resource */
-    public function testRegisterResource() { $this->assertTrue(true); }
+    /* test it can register service */
+    public function testRegisterService() { $this->assertTrue(true); }
 
     /* test it can set entry */
     public function testSet()
     {
         $this->app->set('name', 'Amit Sidhpura');
-        $this->assertSame(['name' => ['instance' => 'Amit Sidhpura']], $this->app->getResources());
+        $this->assertSame(['name' => ['instance' => 'Amit Sidhpura']], $this->app->getServices());
     }
 
     /* test it can check entry exists */
@@ -152,8 +152,8 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertTrue(true);
     }
 
-    /* test it can get resources */
-    public function testGetResources()
+    /* test it can get services */
+    public function testGetServices()
     {
         /* test covered in testSet */
         $this->assertTrue(true);
@@ -162,7 +162,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
     /* test it can get dependency stack */
     public function testGetDependencyStack() { $this->assertTrue(true); }
 
-    /* test it can flush all modules, tasks, resources and instance stack of the application */
+    /* test it can flush all modules, tasks, services and instance stack of the application */
     public function testFlush() { $this->assertTrue(true); }
 
     /* test it can get root path */

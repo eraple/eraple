@@ -61,11 +61,11 @@ class App implements ContainerInterface
     protected $tasks = [];
 
     /**
-     * Registered resources.
+     * Registered services.
      *
      * @var array
      */
-    protected $resources = [];
+    protected $services = [];
 
     /**
      * Dependency stack.
@@ -119,7 +119,7 @@ class App implements ContainerInterface
     {
         $this->registerModules();
         $this->registerTasks();
-        $this->registerResources();
+        $this->registerServices();
         $this->fire('before-start');
         $this->fire('start');
         $this->fire('after-start');
@@ -162,16 +162,16 @@ class App implements ContainerInterface
     }
 
     /**
-     * Register resources.
+     * Register services.
      */
-    protected function registerResources()
+    protected function registerServices()
     {
-        /* register resources */
+        /* register services */
         foreach ($this->tasks as $task) {
-            $resources = $task::getResources();
+            $services = $task::getServices();
 
-            foreach ($resources as $resourceId => $resource) {
-                $this->set($resourceId, $resource);
+            foreach ($services as $serviceId => $service) {
+                $this->set($serviceId, $service);
             }
         }
     }
@@ -210,7 +210,7 @@ class App implements ContainerInterface
      *
      * @return $this
      */
-    public function registerResource(string $id, $entry)
+    public function registerService(string $id, $entry)
     {
         return $this->set($id, $entry);
     }
@@ -243,8 +243,8 @@ class App implements ContainerInterface
         /* process entry with id as interface and entry as class */
         if ($idIsInterfaceAndEntryIsClass) $entry = ['concrete' => $entry];
 
-        /* set resource to the application */
-        $this->resources[$id] = $entry;
+        /* set service to the application */
+        $this->services[$id] = $entry;
 
         return $this;
     }
@@ -258,13 +258,13 @@ class App implements ContainerInterface
      */
     public function has($id)
     {
-        if (isset($this->resources[$id])) return true;
+        if (isset($this->services[$id])) return true;
 
         return $this->injector->canCreate($id);
     }
 
     /**
-     * Get an instance of the application resource by its id.
+     * Get an instance of the application service by its id.
      *
      * @param string $id Id of an entry
      * @param  mixed $entry Entry of the application
@@ -281,7 +281,7 @@ class App implements ContainerInterface
         if (!$this->has($id)) throw new NotFoundException();
 
         /* entry not found but instantiable */
-        if (!isset($this->resources[$id])) {
+        if (!isset($this->services[$id])) {
             /* remove stack entry */
             array_pop($this->dependencyStack['instance']);
 
@@ -290,8 +290,8 @@ class App implements ContainerInterface
 
         /* entry found and instantiable */
         $functions = ['getEntryInstanceByIdKey', 'getEntryInstanceByIdClass', 'getEntryInstanceByIdInterface', 'getEntryInstanceByIdAlias'];
-        $entry = !is_null($entry) ? $entry : $this->resources[$id];
-        $entry = is_array($entry) && is_array($this->resources[$id]) ? array_merge($this->resources[$id], $entry) : $entry;
+        $entry = !is_null($entry) ? $entry : $this->services[$id];
+        $entry = is_array($entry) && is_array($this->services[$id]) ? array_merge($this->services[$id], $entry) : $entry;
         foreach ($functions as $function) {
             $instance = $this->$function($id, $entry);
             if (!is_null($instance)) {
@@ -354,8 +354,8 @@ class App implements ContainerInterface
             /* create class instance with parameters */
             $instance = $this->injector->create($id, $parameters);
 
-            /* save instance to resources if singleton is true */
-            if (isset($entry['singleton']) && $entry['singleton'] === true) $this->resources[$id]['instance'] = $instance;
+            /* save instance to services if singleton is true */
+            if (isset($entry['singleton']) && $entry['singleton'] === true) $this->services[$id]['instance'] = $instance;
 
             return $instance;
         }
@@ -538,13 +538,13 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get all the resources registered to the application.
+     * Get all the services registered to the application.
      *
      * @return array
      */
-    public function getResources()
+    public function getServices()
     {
-        return $this->resources;
+        return $this->services;
     }
 
     /**
@@ -558,13 +558,13 @@ class App implements ContainerInterface
     }
 
     /**
-     * Flush all the modules, tasks, resources and instance stack of the application.
+     * Flush all the modules, tasks, services and instance stack of the application.
      */
     public function flush()
     {
         $this->modules = [];
         $this->tasks = [];
-        $this->resources = [];
+        $this->services = [];
         $this->dependencyStack = [];
     }
 
