@@ -3,6 +3,7 @@
 namespace Eraple\Test;
 
 use Eraple\App;
+use Eraple\Test\Data\Stub\SampleServiceInterface;
 use Zend\Di\Injector;
 use Zend\Di\Definition\RuntimeDefinition;
 use Eraple\Exception\CircularDependencyException;
@@ -12,6 +13,7 @@ use Eraple\Test\Data\Stub\NotImplementedModule;
 use Eraple\Test\Data\Stub\SampleTask;
 use Eraple\Test\Data\Stub\InvalidNameTask;
 use Eraple\Test\Data\Stub\NotImplementedTask;
+use Eraple\Test\Data\Stub\SampleService;
 use Eraple\Test\Data\Stub\FireEventTask;
 use Eraple\Test\Data\Stub\FireHighIndexEventTask;
 use Eraple\Test\Data\Stub\FireLowIndexEventTask;
@@ -34,7 +36,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
     }
 
     /* test it can instantiate and set root path, injector and runtime definition */
-    public function testConstruct()
+    public function testFunctionConstruct()
     {
         $app = new App('some_path_here');
         $this->assertSame('some_path_here' . DIRECTORY_SEPARATOR, $app->getRootPath());
@@ -43,7 +45,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
     }
 
     /* test it can instantiate and get global instance */
-    public function testInstance()
+    public function testFunctionInstance()
     {
         $appGlobal = App::instance();
         $appLocal = new App();
@@ -52,16 +54,16 @@ class AppTest extends \PHPUnit\Framework\TestCase
     }
 
     /* test it can get version */
-    public function testGetVersion()
+    public function testFunctionGetVersion()
     {
         $this->assertSame('1.0.0', $this->app->getVersion());
     }
 
     /* test it can run */
-    public function testRun() { $this->assertTrue(true); }
+    public function testFunctionRun() { $this->assertTrue(true); }
 
     /* test it can register module */
-    public function testRegisterModule()
+    public function testFunctionRegisterModule()
     {
         $this->app->registerModule(SampleModule::class);
         $this->app->registerModule(InvalidNameModule::class);
@@ -70,7 +72,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
     }
 
     /* test it can register task */
-    public function testRegisterTask()
+    public function testFunctionRegisterTask()
     {
         $this->app->registerTask(SampleTask::class);
         $this->app->registerModule(InvalidNameTask::class);
@@ -79,32 +81,40 @@ class AppTest extends \PHPUnit\Framework\TestCase
     }
 
     /* test it can register service */
-    public function testRegisterService() { $this->assertTrue(true); }
+    public function testFunctionRegisterService()
+    {
+        /* test covered in testFunctionSet */
+        $this->assertTrue(true);
+    }
 
     /* test it can set entry */
-    public function testSet()
+    public function testFunctionSet()
     {
         $this->app->set('name', 'Amit Sidhpura');
         $this->assertSame(['name' => ['instance' => 'Amit Sidhpura']], $this->app->getServices());
     }
 
     /* test it can check entry exists */
-    public function testHas()
+    public function testFunctionHas()
     {
         $this->assertFalse($this->app->has('name'));
         $this->app->set('name', 'Amit Sidhpura');
         $this->assertTrue($this->app->has('name'));
+        $this->assertTrue($this->app->has(SampleService::class));
+        /** @noinspection PhpUndefinedClassInspection */
+        $this->assertFalse($this->app->has(SampleServiceNotAvailable::class));
+        $this->assertFalse($this->app->has(SampleServiceInterface::class));
     }
 
     /* test it can get entry */
-    public function testGet()
+    public function testFunctionGet()
     {
         $this->app->set('name', 'Amit Sidhpura');
         $this->assertSame('Amit Sidhpura', $this->app->get('name'));
     }
 
     /* test it can fire event */
-    public function testFire()
+    public function testFunctionFire()
     {
         /* test sequence of tasks based on index and event */
         $this->app->registerTask(FireLowIndexEventTask::class);
@@ -115,7 +125,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
     }
 
     /* test it can run task */
-    public function testRunTask()
+    public function testFunctionRunTask()
     {
         $this->expectException(CircularDependencyException::class);
         $this->app->registerTask(TaskAFollowsTaskC::class);
@@ -125,66 +135,66 @@ class AppTest extends \PHPUnit\Framework\TestCase
     }
 
     /* test it can get runtime definition */
-    public function testGetInjector()
+    public function testFunctionGetInjector()
     {
-        /* test covered in testConstruct */
+        /* test covered in testFunctionConstruct */
         $this->assertTrue(true);
     }
 
     /* test it can get modules */
-    public function testGetDefinition()
+    public function testFunctionGetDefinition()
     {
-        /* test covered in testConstruct */
+        /* test covered in testFunctionConstruct */
         $this->assertTrue(true);
     }
 
     /* test it can get injector */
-    public function testGetModules()
+    public function testFunctionGetModules()
     {
-        /* test covered in testRegisterModule */
+        /* test covered in testFunctionRegisterModule */
         $this->assertTrue(true);
     }
 
     /* test it can get tasks */
-    public function testGetTasks()
+    public function testFunctionGetTasks()
     {
-        /* test covered in testRegisterTask */
+        /* test covered in testFunctionRegisterTask */
         $this->assertTrue(true);
     }
 
     /* test it can get services */
-    public function testGetServices()
+    public function testFunctionGetServices()
     {
-        /* test covered in testSet */
+        /* test covered in testFunctionSet */
         $this->assertTrue(true);
     }
 
     /* test it can get dependency stack */
-    public function testGetDependencyStack() { $this->assertTrue(true); }
+    public function testFunctionGetDependencyStack() { $this->assertTrue(true); }
 
     /* test it can flush all modules, tasks, services and instance stack of the application */
-    public function testFlush() { $this->assertTrue(true); }
+    public function testFunctionFlush() { $this->assertTrue(true); }
 
     /* test it can get root path */
-    public function testGetRootPath()
+    public function testFunctionGetRootPath()
     {
         $this->assertSame($this->rootPath . DIRECTORY_SEPARATOR, $this->app->getRootPath());
     }
 
     /* test it can get local path */
-    public function testGetLocalPath()
+    public function testFunctionGetLocalPath()
     {
         $this->assertSame($this->rootPath . DIRECTORY_SEPARATOR . 'local' . DIRECTORY_SEPARATOR, $this->app->getLocalPath());
     }
 
     /* test it can get vendor path */
-    public function testGetVendorPath()
+    public function testFunctionGetVendorPath()
     {
         $this->assertSame($this->rootPath . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR, $this->app->getVendorPath());
     }
 
     /* test it can check whether given name is valid module, task or event name */
-    public function testIsNameValid()
+    public function testFunctionIsNameValid()
     {
         $this->assertTrue($this->app->isNameValid('task'));
         $this->assertTrue($this->app->isNameValid('task-one'));
@@ -196,10 +206,10 @@ class AppTest extends \PHPUnit\Framework\TestCase
     }
 
     /* test it can check whether entry is circular dependent */
-    public function testIsEntryCircularDependent() { $this->assertTrue(true); }
+    public function testFunctionIsEntryCircularDependent() { $this->assertTrue(true); }
 
     /* test it can convert delimiters string to camelcase string */
-    public function testCamelize()
+    public function testFunctionCamelize()
     {
         $this->assertSame('taskOne', $this->app->camelize('task-one'));
         $this->assertSame('taskOne', $this->app->camelize('task_one', '_'));
@@ -207,7 +217,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
     }
 
     /* test it can convert camelcase string to delimiters string */
-    public function testUncamelize()
+    public function testFunctionUncamelize()
     {
         $this->assertSame('task-one', $this->app->uncamelize('taskOne'));
         $this->assertSame('task_one', $this->app->uncamelize('taskOne', '_'));
