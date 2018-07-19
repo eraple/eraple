@@ -421,7 +421,7 @@ class App implements ContainerInterface
         if (!$this->isNameValid($event)) return $data;
 
         /* run tasks on event */
-        foreach ($this->getTasks(['position' => $event], 'and', 'priority', 'dsc') as $task) {
+        foreach ($this->getTasks(['event' => $event], 'and', 'priority', 'dsc') as $task) {
             $data = $this->runTask($task, $data);
         }
 
@@ -443,7 +443,7 @@ class App implements ContainerInterface
 
         /* replace task chain */
         /* @var $task Task::class */
-        if (count($replacementTasks = $this->getTasks(['position' => 'replace-task-' . $task::getName()], 'and', 'priority'))) {
+        if (count($replacementTasks = $this->getTasks(['event' => 'replace-task-' . $task::getName()], 'and', 'priority'))) {
             /* remove stack entry */
             array_pop($this->dependencyStack['task']);
 
@@ -502,24 +502,24 @@ class App implements ContainerInterface
      * Get all the tasks registered to the application.
      *
      * @param  array $filterBy Filter fields array
-     * @param string $filterCondition Filter condition "and" or "or"
+     * @param string $filterLogic Filter condition "and" or "or"
      * @param string $orderBy Order by field
      * @param string $order Ascending "asc" or descending "dsc" order
      *
      * @return Task[]
      */
-    public function getTasks($filterBy = [], $filterCondition = 'and', $orderBy = null, $order = 'asc')
+    public function getTasks($filterBy = [], $filterLogic = 'and', $orderBy = null, $order = 'asc')
     {
         $tasks = $this->tasks;
 
         /* filter tasks */
         if (count($filterBy)) {
-            $tasks = array_filter($tasks, function (string $task) use ($filterBy, $filterCondition) {
+            $tasks = array_filter($tasks, function (string $task) use ($filterBy, $filterLogic) {
                 /* @var $task Task::class */
-                $areNamesEqual = isset($filterBy['name']) ? $task::getName() === $filterBy['name'] : $filterCondition === 'and';
-                $arePositionsEqual = isset($filterBy['position']) ? $task::getPosition() === $filterBy['position'] : $filterCondition === 'and';
+                $areNamesEqual = isset($filterBy['name']) ? $task::getName() === $filterBy['name'] : $filterLogic === 'and';
+                $areEventsEqual = isset($filterBy['event']) ? $task::getEvent() === $filterBy['event'] : $filterLogic === 'and';
 
-                return $filterCondition === 'and' ? $areNamesEqual && $arePositionsEqual : $areNamesEqual || $arePositionsEqual;
+                return $filterLogic === 'and' ? $areNamesEqual && $areEventsEqual : $areNamesEqual || $areEventsEqual;
             });
         }
 

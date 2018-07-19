@@ -9,7 +9,7 @@ class FireEventTask extends Task
 {
     protected static $name = 'fire-event-task';
 
-    protected static $position = 'something-happened';
+    protected static $event = 'something-happened';
 
     protected static $priority = 0;
 

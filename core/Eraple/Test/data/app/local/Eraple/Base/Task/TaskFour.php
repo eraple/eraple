@@ -11,7 +11,7 @@ class TaskFour extends Task
 
     protected static $description = 'I will do task four.';
 
-    protected static $position = 'before_task-three';
+    protected static $event = 'before_task-three';
 
     protected static $priority = 1;
 

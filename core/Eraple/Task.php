@@ -19,11 +19,11 @@ abstract class Task
     protected static $description = 'No description found.';
 
     /**
-     * Task position.
+     * Task event.
      *
      * @var string
      */
-    protected static $position = 'event_before_end';
+    protected static $event = 'event_before_end';
 
     /**
      * Task priority.
@@ -60,13 +60,13 @@ abstract class Task
     }
 
     /**
-     * Get the task position.
+     * Get the task event.
      *
      * @return string
      */
-    public static function getPosition()
+    public static function getEvent()
     {
-        return static::$position;
+        return static::$event;
     }
 
     /**

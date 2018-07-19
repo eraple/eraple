@@ -11,7 +11,7 @@ class TaskEight extends Task
 
     protected static $description = 'I will do task eight instead of four.';
 
-    protected static $position = 'replace_task-four';
+    protected static $event = 'replace_task-four';
 
     protected static $priority = 2;
 
