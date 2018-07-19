@@ -225,23 +225,23 @@ class App implements ContainerInterface
      */
     public function set(string $id, $entry)
     {
-        /* id is not class or interface */
-        $entryIsNotClassAndInterface = !class_exists($id) && !interface_exists($id);
+        /* check id is not class and not interface */
+        $isIdNotClassAndNotInterface = !class_exists($id) && !interface_exists($id);
 
         /* discard entry with invalid name */
-        if ($entryIsNotClassAndInterface && !$this->isNameValid($id)) return $this;
+        if ($isIdNotClassAndNotInterface && !$this->isNameValid($id)) return $this;
 
-        /* id is not alias or instance */
-        $idIsNotAliasAndInstance = (!is_array($entry) || (!isset($entry['typeOf']) && !isset($entry['instance'])));
+        /* check entry is not alias and not instance */
+        $isEntryNotAliasAndNotInstance = !is_array($entry) || (!isset($entry['typeOf']) && !isset($entry['instance']));
 
         /* process entry with id as key and entry as value */
-        if ($idIsNotAliasAndInstance && $idIsNotAliasAndInstance) $entry = ['instance' => $entry];
+        if ($isIdNotClassAndNotInterface && $isEntryNotAliasAndNotInstance) $entry = ['instance' => $entry];
 
-        /* id is interface and entry is class */
-        $idIsInterfaceAndEntryIsClass = interface_exists($id) && is_string($entry) && class_exists($entry);
+        /* check id is interface and entry is class */
+        $isIdInterfaceAndEntryClass = interface_exists($id) && is_string($entry) && class_exists($entry);
 
         /* process entry with id as interface and entry as class */
-        if ($idIsInterfaceAndEntryIsClass) $entry = ['concrete' => $entry];
+        if ($isIdInterfaceAndEntryClass) $entry = ['concrete' => $entry];
 
         /* set service to the application */
         $this->services[$id] = $entry;

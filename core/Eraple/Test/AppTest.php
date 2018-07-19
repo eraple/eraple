@@ -90,19 +90,58 @@ class AppTest extends \PHPUnit\Framework\TestCase
     /* test it can set entry */
     public function testFunctionSet()
     {
+        /* set name and value pair with invalid name */
+        $this->app->set('My Name', 'Amit Sidhpura');
+        $this->assertSame([], $this->app->getServices());
+
+        /* set name and value pair with valid name */
         $this->app->set('name', 'Amit Sidhpura');
         $this->assertSame(['name' => ['instance' => 'Amit Sidhpura']], $this->app->getServices());
+
+        /* set name and value pair in array with instance format */
+        $this->app->flush();
+        $this->app->set('name', ['instance' => 'Amit Sidhpura']);
+        $this->assertSame(['name' => ['instance' => 'Amit Sidhpura']], $this->app->getServices());
+
+        /* set name and value pair with value as array */
+        $this->app->flush();
+        $this->app->set('profile', ['first-name' => 'Amit', 'last-name' => 'Sidhpura']);
+        $this->assertSame(['profile' => ['instance' => ['first-name' => 'Amit', 'last-name' => 'Sidhpura']]], $this->app->getServices());
+
+        /* set interface and class pair */
+        $this->app->flush();
+        $this->app->set(SampleServiceInterface::class, SampleService::class);
+        $this->assertSame([SampleServiceInterface::class => ['concrete' => SampleService::class]], $this->app->getServices());
+
+        /* set interface and class pair in array with concrete format */
+        $this->app->flush();
+        $this->app->set(SampleServiceInterface::class, ['concrete' => SampleService::class]);
+        $this->assertSame([SampleServiceInterface::class => ['concrete' => SampleService::class]], $this->app->getServices());
+
+        /* set alias and config pair */
+        $this->app->flush();
+        $this->app->set('name-alias', ['typeOf' => 'name']);
+        $this->assertSame(['name-alias' => ['typeOf' => 'name']], $this->app->getServices());
     }
 
     /* test it can check entry exists */
     public function testFunctionHas()
     {
+        /* entry not set */
         $this->assertFalse($this->app->has('name'));
+
+        /* entry set */
         $this->app->set('name', 'Amit Sidhpura');
         $this->assertTrue($this->app->has('name'));
+
+        /* entry not set but injector can create it */
         $this->assertTrue($this->app->has(SampleService::class));
+
+        /* entry not set and injector cannot instantiate non existent class */
         /** @noinspection PhpUndefinedClassInspection */
-        $this->assertFalse($this->app->has(SampleServiceNotAvailable::class));
+        $this->assertFalse($this->app->has(SampleServiceNotExists::class));
+
+        /* entry not set and injector cannot instantiate interface */
         $this->assertFalse($this->app->has(SampleServiceInterface::class));
     }
 
