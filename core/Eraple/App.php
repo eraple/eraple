@@ -232,7 +232,7 @@ class App implements ContainerInterface
         if ($isIdNotClassAndNotInterface && !$this->isNameValid($id)) return $this;
 
         /* check entry is not alias and not instance */
-        $isEntryNotAliasAndNotInstance = !is_array($entry) || (!isset($entry['typeOf']) && !isset($entry['instance']));
+        $isEntryNotAliasAndNotInstance = !is_array($entry) || (!key_exists('typeOf', $entry) && !key_exists('instance', $entry));
 
         /* process entry with id as key and entry as value */
         if ($isIdNotClassAndNotInterface && $isEntryNotAliasAndNotInstance) $entry = ['instance' => $entry];
@@ -282,10 +282,11 @@ class App implements ContainerInterface
 
         /* entry not found but instantiable */
         if (!isset($this->services[$id])) {
+            $instance = $this->injector->create($id);
             /* remove stack entry */
             array_pop($this->dependencyStack['instance']);
 
-            return $this->injector->create($id);
+            return $instance;
         }
 
         /* entry found and instantiable */

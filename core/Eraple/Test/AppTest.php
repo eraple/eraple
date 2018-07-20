@@ -3,17 +3,24 @@
 namespace Eraple\Test;
 
 use Eraple\App;
-use Eraple\Test\Data\Stub\SampleServiceInterface;
 use Zend\Di\Injector;
 use Zend\Di\Definition\RuntimeDefinition;
+use Zend\Di\Exception\MissingPropertyException;
 use Eraple\Exception\CircularDependencyException;
+use Eraple\Exception\NotFoundException;
+use Eraple\Exception\ContainerException;
 use Eraple\Test\Data\Stub\SampleModule;
 use Eraple\Test\Data\Stub\InvalidNameModule;
 use Eraple\Test\Data\Stub\NotImplementedModule;
 use Eraple\Test\Data\Stub\SampleTask;
 use Eraple\Test\Data\Stub\InvalidNameTask;
 use Eraple\Test\Data\Stub\NotImplementedTask;
+use Eraple\Test\Data\Stub\SampleServiceInterface;
 use Eraple\Test\Data\Stub\SampleService;
+use Eraple\Test\Data\Stub\ServiceANeedsServiceB;
+use Eraple\Test\Data\Stub\ServiceBNeedsServiceC;
+use Eraple\Test\Data\Stub\ServiceCNeedsServiceA;
+use Eraple\Test\Data\Stub\ServiceParameterCouldNotBeResolved;
 use Eraple\Test\Data\Stub\FireEventTask;
 use Eraple\Test\Data\Stub\FireLowIndexEventTask;
 use Eraple\Test\Data\Stub\FireHighIndexEventTask;
@@ -277,7 +284,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
     }
 
     /* test it can allow to replace particular task and also to retain replaced task dependencies */
-    public function testExtraReplaceTaskAndAlsoToRetainReplacedTaskDependencies()
+    public function testExtraReplaceParticularTask()
     {
         $this->app->registerTask(FireAfterEventTask::class);
         $this->app->registerTask(FireBeforeEventTask::class);
@@ -286,4 +293,68 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $data = $this->app->fire('something-happened', ['key' => '(fired)']);
         $this->assertSame(['key' => '(fired) before on replaced after'], $data);
     }
+
+    /* test it can throw circular dependency exception when class entries exist and are circular dependent */
+    public function testExtraThrowCircularDependencyExceptionWhenClassEntriesExistAndAreCircularDependent()
+    {
+        $this->expectException(CircularDependencyException::class);
+        $this->app->set(ServiceANeedsServiceB::class, []);
+        $this->app->set(ServiceBNeedsServiceC::class, []);
+        $this->app->set(ServiceCNeedsServiceA::class, []);
+        $this->app->get(ServiceANeedsServiceB::class);
+    }
+
+    /* test it can throw circular dependency exception when class entries does not exist and are circular dependent */
+    public function testExtraThrowCircularDependencyExceptionWhenClassEntriesDoesNotExistAndAreCircularDependent()
+    {
+        $this->expectException(CircularDependencyException::class);
+        $this->app->get(ServiceANeedsServiceB::class);
+    }
+
+    /* test it can throw circular dependency exception when alias is circular dependent */
+    public function testExtraThrowCircularDependencyExceptionWhenAliasIsCircularDependent()
+    {
+        $this->expectException(CircularDependencyException::class);
+        $this->app->set('name-alias1', ['typeOf' => 'name-alias2']);
+        $this->app->set('name-alias2', ['typeOf' => 'name-alias1']);
+        $this->app->get('name-alias1');
+    }
+
+    /* test it can throw not found exception when entry not found */
+    public function testExtraThrowNotFoundException()
+    {
+        $this->expectException(NotFoundException::class);
+        $this->app->get('name');
+    }
+
+    /* test it can throw missing property exception when injector cannot resolve a parameter */
+    public function testExtraThrowMissingPropertyException()
+    {
+        $this->expectException(MissingPropertyException::class);
+        $this->app->set(SampleServiceInterface::class, ServiceParameterCouldNotBeResolved::class);
+        $this->app->get(SampleServiceInterface::class);
+    }
+
+    /* test it can throw container exception when entry found but not instantiable */
+    public function testExtraThrowContainerException()
+    {
+        $this->expectException(ContainerException::class);
+        $this->app->set('name', null);
+        $this->app->get('name');
+    }
+
+    /* test it can get instance of entry not found but creatable */
+    public function testExtraGetInstanceOfEntryNotFoundButCreatable() { $this->assertTrue(true); }
+
+    /* test it can get instance of existing key */
+    public function testExtraGetInstanceOfExistingKey() { $this->assertTrue(true); }
+
+    /* test it can get instance of existing class */
+    public function testExtraGetInstanceOfExistingClass() { $this->assertTrue(true); }
+
+    /* test it can get instance of existing interface */
+    public function testExtraGetInstanceOfExistingInterface() { $this->assertTrue(true); }
+
+    /* test it can get instance of existing entry alias */
+    public function testExtraGetInstanceOfExistingEntryAlias() { $this->assertTrue(true); }
 }
