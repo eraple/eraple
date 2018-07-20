@@ -441,7 +441,7 @@ class App implements ContainerInterface
         /* add stack entry */
         $this->isEntryCircularDependent('task', $task);
 
-        /* replace task chain */
+        /* replace task */
         /* @var $task Task::class */
         if (count($replacementTasks = $this->getTasks(['event' => 'replace-task-' . $task::getName()], 'and', 'index'))) {
             /* remove stack entry */
@@ -453,7 +453,7 @@ class App implements ContainerInterface
         /* run tasks before task */
         $data = $this->fire('before-task-' . $task::getName(), $data);
 
-        /* run replaced task or task */
+        /* run task */
         /* @var $taskInstance Task */
         $taskInstance = new $task();
         $returnData = $taskInstance->run($this, $data);

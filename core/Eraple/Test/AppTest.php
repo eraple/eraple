@@ -15,8 +15,11 @@ use Eraple\Test\Data\Stub\InvalidNameTask;
 use Eraple\Test\Data\Stub\NotImplementedTask;
 use Eraple\Test\Data\Stub\SampleService;
 use Eraple\Test\Data\Stub\FireEventTask;
-use Eraple\Test\Data\Stub\FireHighIndexEventTask;
 use Eraple\Test\Data\Stub\FireLowIndexEventTask;
+use Eraple\Test\Data\Stub\FireHighIndexEventTask;
+use Eraple\Test\Data\Stub\FireBeforeEventTask;
+use Eraple\Test\Data\Stub\FireAfterEventTask;
+use Eraple\Test\Data\Stub\FireReplaceEventTask;
 use Eraple\Test\Data\Stub\TaskAFollowsTaskC;
 use Eraple\Test\Data\Stub\TaskBFollowsTaskA;
 use Eraple\Test\Data\Stub\TaskCFollowsTaskB;
@@ -155,9 +158,9 @@ class AppTest extends \PHPUnit\Framework\TestCase
     /* test it can fire event */
     public function testFunctionFire()
     {
-        /* test sequence of tasks based on index and event */
-        $this->app->registerTask(FireLowIndexEventTask::class);
+        /* test sequence of tasks based on event and index */
         $this->app->registerTask(FireHighIndexEventTask::class);
+        $this->app->registerTask(FireLowIndexEventTask::class);
         $this->app->registerTask(FireEventTask::class);
         $data = $this->app->fire('something-happened', ['key' => '(fired)']);
         $this->assertSame(['key' => '(fired) low on high'], $data);
@@ -261,5 +264,26 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertSame('task-one', $this->app->uncamelize('taskOne'));
         $this->assertSame('task_one', $this->app->uncamelize('taskOne', '_'));
         $this->assertSame('taskone', $this->app->uncamelize('taskone'));
+    }
+
+    /* test it can allow run task before and after particular task */
+    public function testExtraRunTaskBeforeAndAfterParticularTask()
+    {
+        $this->app->registerTask(FireAfterEventTask::class);
+        $this->app->registerTask(FireBeforeEventTask::class);
+        $this->app->registerTask(FireEventTask::class);
+        $data = $this->app->fire('something-happened', ['key' => '(fired)']);
+        $this->assertSame(['key' => '(fired) before on after'], $data);
+    }
+
+    /* test it can allow to replace particular task and also to retain replaced task dependencies */
+    public function testExtraReplaceTaskAndAlsoToRetainReplacedTaskDependencies()
+    {
+        $this->app->registerTask(FireAfterEventTask::class);
+        $this->app->registerTask(FireBeforeEventTask::class);
+        $this->app->registerTask(FireEventTask::class);
+        $this->app->registerTask(FireReplaceEventTask::class);
+        $data = $this->app->fire('something-happened', ['key' => '(fired)']);
+        $this->assertSame(['key' => '(fired) before on replaced after'], $data);
     }
 }
