@@ -11,22 +11,25 @@ use Eraple\Exception\NotFoundException;
 use Eraple\Exception\ContainerException;
 use Eraple\Test\Data\Stub\SampleModule;
 use Eraple\Test\Data\Stub\InvalidNameModule;
-use Eraple\Test\Data\Stub\NotImplementedModule;
+use Eraple\Test\Data\Stub\NotExtendedAbstractModule;
 use Eraple\Test\Data\Stub\SampleTask;
 use Eraple\Test\Data\Stub\InvalidNameTask;
-use Eraple\Test\Data\Stub\NotImplementedTask;
+use Eraple\Test\Data\Stub\NotExtendedAbstractTask;
 use Eraple\Test\Data\Stub\SampleServiceInterface;
 use Eraple\Test\Data\Stub\SampleService;
+use Eraple\Test\Data\Stub\SampleServiceHasParameters;
+use Eraple\Test\Data\Stub\SampleServiceForPreferencesInterface;
+use Eraple\Test\Data\Stub\SampleServiceForPreferences;
 use Eraple\Test\Data\Stub\ServiceANeedsServiceB;
 use Eraple\Test\Data\Stub\ServiceBNeedsServiceC;
 use Eraple\Test\Data\Stub\ServiceCNeedsServiceA;
 use Eraple\Test\Data\Stub\ServiceParameterCouldNotBeResolved;
-use Eraple\Test\Data\Stub\FireEventTask;
-use Eraple\Test\Data\Stub\FireLowIndexEventTask;
-use Eraple\Test\Data\Stub\FireHighIndexEventTask;
-use Eraple\Test\Data\Stub\FireBeforeEventTask;
-use Eraple\Test\Data\Stub\FireAfterEventTask;
-use Eraple\Test\Data\Stub\FireReplaceEventTask;
+use Eraple\Test\Data\Stub\SampleTaskHandlesEvent;
+use Eraple\Test\Data\Stub\SampleTaskHandlesEventWithLowIndex;
+use Eraple\Test\Data\Stub\SampleTaskHandlesEventWithHighIndex;
+use Eraple\Test\Data\Stub\SampleTaskHandlesBeforeTaskRunEvent;
+use Eraple\Test\Data\Stub\SampleTaskHandlesAfterTaskRunEvent;
+use Eraple\Test\Data\Stub\SampleTaskHandlesReplaceTaskEvent;
 use Eraple\Test\Data\Stub\TaskAFollowsTaskC;
 use Eraple\Test\Data\Stub\TaskBFollowsTaskA;
 use Eraple\Test\Data\Stub\TaskCFollowsTaskB;
@@ -77,7 +80,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
     {
         $this->app->registerModule(SampleModule::class);
         $this->app->registerModule(InvalidNameModule::class);
-        $this->app->registerModule(NotImplementedModule::class);
+        $this->app->registerModule(NotExtendedAbstractModule::class);
         $this->assertSame(['sample-module' => SampleModule::class], $this->app->getModules());
     }
 
@@ -86,7 +89,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
     {
         $this->app->registerTask(SampleTask::class);
         $this->app->registerModule(InvalidNameTask::class);
-        $this->app->registerModule(NotImplementedTask::class);
+        $this->app->registerModule(NotExtendedAbstractTask::class);
         $this->assertSame(['sample-task' => SampleTask::class], $this->app->getTasks());
     }
 
@@ -121,12 +124,12 @@ class AppTest extends \PHPUnit\Framework\TestCase
         /* set interface and class pair */
         $this->app->flush();
         $this->app->set(SampleServiceInterface::class, SampleService::class);
-        $this->assertSame([SampleServiceInterface::class => ['concrete' => SampleService::class]], $this->app->getServices());
+        $this->assertSame([SampleServiceInterface::class => ['class' => SampleService::class]], $this->app->getServices());
 
-        /* set interface and class pair in array with concrete format */
+        /* set interface and class pair in array with class format */
         $this->app->flush();
-        $this->app->set(SampleServiceInterface::class, ['concrete' => SampleService::class]);
-        $this->assertSame([SampleServiceInterface::class => ['concrete' => SampleService::class]], $this->app->getServices());
+        $this->app->set(SampleServiceInterface::class, ['class' => SampleService::class]);
+        $this->assertSame([SampleServiceInterface::class => ['class' => SampleService::class]], $this->app->getServices());
 
         /* set alias and config pair */
         $this->app->flush();
@@ -166,9 +169,9 @@ class AppTest extends \PHPUnit\Framework\TestCase
     public function testFunctionFire()
     {
         /* test sequence of tasks based on event and index */
-        $this->app->registerTask(FireHighIndexEventTask::class);
-        $this->app->registerTask(FireLowIndexEventTask::class);
-        $this->app->registerTask(FireEventTask::class);
+        $this->app->registerTask(SampleTaskHandlesEventWithHighIndex::class);
+        $this->app->registerTask(SampleTaskHandlesEventWithLowIndex::class);
+        $this->app->registerTask(SampleTaskHandlesEvent::class);
         $data = $this->app->fire('something-happened', ['key' => '(fired)']);
         $this->assertSame(['key' => '(fired) low on high'], $data);
     }
@@ -276,9 +279,9 @@ class AppTest extends \PHPUnit\Framework\TestCase
     /* test it can allow run task before and after particular task */
     public function testExtraRunTaskBeforeAndAfterParticularTask()
     {
-        $this->app->registerTask(FireAfterEventTask::class);
-        $this->app->registerTask(FireBeforeEventTask::class);
-        $this->app->registerTask(FireEventTask::class);
+        $this->app->registerTask(SampleTaskHandlesAfterTaskRunEvent::class);
+        $this->app->registerTask(SampleTaskHandlesBeforeTaskRunEvent::class);
+        $this->app->registerTask(SampleTaskHandlesEvent::class);
         $data = $this->app->fire('something-happened', ['key' => '(fired)']);
         $this->assertSame(['key' => '(fired) before on after'], $data);
     }
@@ -286,10 +289,10 @@ class AppTest extends \PHPUnit\Framework\TestCase
     /* test it can allow to replace particular task and also to retain replaced task dependencies */
     public function testExtraReplaceParticularTask()
     {
-        $this->app->registerTask(FireAfterEventTask::class);
-        $this->app->registerTask(FireBeforeEventTask::class);
-        $this->app->registerTask(FireEventTask::class);
-        $this->app->registerTask(FireReplaceEventTask::class);
+        $this->app->registerTask(SampleTaskHandlesAfterTaskRunEvent::class);
+        $this->app->registerTask(SampleTaskHandlesBeforeTaskRunEvent::class);
+        $this->app->registerTask(SampleTaskHandlesEvent::class);
+        $this->app->registerTask(SampleTaskHandlesReplaceTaskEvent::class);
         $data = $this->app->fire('something-happened', ['key' => '(fired)']);
         $this->assertSame(['key' => '(fired) before on replaced after'], $data);
     }
@@ -344,17 +347,128 @@ class AppTest extends \PHPUnit\Framework\TestCase
     }
 
     /* test it can get instance of entry not found but creatable */
-    public function testExtraGetInstanceOfEntryNotFoundButCreatable() { $this->assertTrue(true); }
+    public function testExtraGetInstanceOfEntryNotFoundButCreatable()
+    {
+        $this->assertInstanceOf(SampleService::class, $this->app->get(SampleService::class));
+    }
 
     /* test it can get instance of existing key */
-    public function testExtraGetInstanceOfExistingKey() { $this->assertTrue(true); }
+    public function testExtraGetInstanceOfExistingKey()
+    {
+        $this->app->set('name', 'Amit Sidhpura');
+        $this->assertSame('Amit Sidhpura', $this->app->get('name'));
+        $this->app->set('name', ['instance' => 'Amit Sidhpura']);
+        $this->assertSame('Amit Sidhpura', $this->app->get('name'));
+        $this->app->set('name', function () { return 'Amit Sidhpura'; });
+        $this->assertSame('Amit Sidhpura', $this->app->get('name'));
+        $this->app->set('name', ['instance' => function () { return 'Amit Sidhpura'; }]);
+        $this->assertSame('Amit Sidhpura', $this->app->get('name'));
+    }
 
     /* test it can get instance of existing class */
-    public function testExtraGetInstanceOfExistingClass() { $this->assertTrue(true); }
+    public function testExtraGetInstanceOfExistingClass()
+    {
+        /* id is class and entry has singleton as false */
+        $this->app->set(SampleService::class, ['singleton' => false]);
+        $sampleService1 = $this->app->get(SampleService::class);
+        $sampleService2 = $this->app->get(SampleService::class);
+        $this->assertNotSame($sampleService1, $sampleService2);
+
+        /* id is class and entry has singleton as true */
+        $this->app->set(SampleService::class, ['singleton' => true]);
+        $sampleService1 = $this->app->get(SampleService::class);
+        $sampleService2 = $this->app->get(SampleService::class);
+        $this->assertSame($sampleService1, $sampleService2);
+
+        /* id is class and entry has preferences and parameters */
+        $classConfiguration = [
+            'preferences' => [SampleServiceForPreferencesInterface::class => SampleServiceForPreferences::class],
+            'parameters'  => ['name' => 'Amit Sidhpura']
+        ];
+        $this->app->set(SampleServiceHasParameters::class, $classConfiguration);
+        $sampleService = $this->app->get(SampleServiceHasParameters::class);
+        $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
+        $this->assertSame('Amit Sidhpura', $sampleService->name);
+        $this->assertInstanceOf(SampleServiceForPreferences::class, $sampleService->sampleServiceForPreferences);
+    }
 
     /* test it can get instance of existing interface */
-    public function testExtraGetInstanceOfExistingInterface() { $this->assertTrue(true); }
+    public function testExtraGetInstanceOfExistingInterface()
+    {
+        /* id is interface and entry is class */
+        $this->app->set(SampleServiceInterface::class, SampleService::class);
+        $this->assertInstanceOf(SampleService::class, $this->app->get(SampleServiceInterface::class));
+
+        /* id is interface and entry has singleton as false */
+        $this->app->set(SampleServiceInterface::class, ['singleton' => false, 'class' => SampleService::class]);
+        $sampleService1 = $this->app->get(SampleServiceInterface::class);
+        $sampleService2 = $this->app->get(SampleServiceInterface::class);
+        $this->assertNotSame($sampleService1, $sampleService2);
+
+        /* id is interface and entry has singleton as true */
+        $this->app->set(SampleServiceInterface::class, ['singleton' => true, 'class' => SampleService::class]);
+        $sampleService1 = $this->app->get(SampleServiceInterface::class);
+        $sampleService2 = $this->app->get(SampleServiceInterface::class);
+        $this->assertSame($sampleService1, $sampleService2);
+
+        /* id is interface and entry has preferences and parameters */
+        $interfaceConfiguration = [
+            'class'       => SampleServiceHasParameters::class,
+            'preferences' => [SampleServiceForPreferencesInterface::class => SampleServiceForPreferences::class],
+            'parameters'  => ['name' => 'Amit Sidhpura']
+        ];
+        $this->app->set(SampleServiceInterface::class, $interfaceConfiguration);
+        $sampleService = $this->app->get(SampleServiceInterface::class);
+        $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
+        $this->assertSame('Amit Sidhpura', $sampleService->name);
+        $this->assertInstanceOf(SampleServiceForPreferences::class, $sampleService->sampleServiceForPreferences);
+    }
 
     /* test it can get instance of existing entry alias */
-    public function testExtraGetInstanceOfExistingEntryAlias() { $this->assertTrue(true); }
+    public function testExtraGetInstanceOfExistingEntryAlias()
+    {
+        /* id is alias and entry is value */
+        $this->app->set('name', 'Amit Sidhpura');
+        $this->app->set('name-alias', ['typeOf' => 'name']);
+        $this->assertSame('Amit Sidhpura', $this->app->get('name-alias'));
+
+        /* id is alias and entry is alias */
+        $this->app->set('name-alias1', ['typeOf' => 'name']);
+        $this->app->set('name-alias2', ['typeOf' => 'name-alias1']);
+        $this->assertSame('Amit Sidhpura', $this->app->get('name-alias2'));
+
+        /* id is alias and entry is interface */
+        $this->app->set(SampleServiceInterface::class, SampleService::class);
+        $this->app->set('sample-service-interface', ['typeOf' => SampleServiceInterface::class]);
+        $this->assertInstanceOf(SampleService::class, $this->app->get('sample-service-interface'));
+
+        /* id is alias and entry is class */
+        $this->app->set('sample-service', ['typeOf' => SampleService::class]);
+        $this->assertInstanceOf(SampleService::class, $this->app->get('sample-service'));
+
+        /* id is alias and entry is interface with preferences and parameters */
+        $interfaceConfiguration = [
+            'typeOf'      => SampleServiceInterface::class,
+            'class'       => SampleServiceHasParameters::class,
+            'preferences' => [SampleServiceForPreferencesInterface::class => SampleServiceForPreferences::class],
+            'parameters'  => ['name' => 'Amit Sidhpura']
+        ];
+        $this->app->set('sample-service', $interfaceConfiguration);
+        $sampleService = $this->app->get('sample-service');
+        $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
+        $this->assertSame('Amit Sidhpura', $sampleService->name);
+        $this->assertInstanceOf(SampleServiceForPreferences::class, $sampleService->sampleServiceForPreferences);
+
+        /* id is alias and entry is class with preferences and parameters */
+        $classConfiguration = [
+            'typeOf'      => SampleServiceHasParameters::class,
+            'preferences' => [SampleServiceForPreferencesInterface::class => SampleServiceForPreferences::class],
+            'parameters'  => ['name' => 'Dipali Sidhpura']
+        ];
+        $this->app->set('sample-service', $classConfiguration);
+        $sampleService = $this->app->get('sample-service');
+        $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
+        $this->assertSame('Dipali Sidhpura', $sampleService->name);
+        $this->assertInstanceOf(SampleServiceForPreferences::class, $sampleService->sampleServiceForPreferences);
+    }
 }

@@ -5,11 +5,11 @@ namespace Eraple\Test\Data\Stub;
 use Eraple\App;
 use Eraple\Task;
 
-class FireBeforeEventTask extends Task
+class SampleTaskHandlesBeforeTaskRunEvent extends Task
 {
-    protected static $name = 'fire-before-event-task';
+    protected static $name = 'sample-task-handles-before-task-run-event';
 
-    protected static $event = 'before-task-fire-event-task';
+    protected static $event = 'before-task-sample-task-handles-event';
 
     protected static $index = 0;
 

@@ -4,9 +4,9 @@ namespace Eraple\Test\Data\Stub;
 
 use Eraple\App;
 
-class NotImplementedModule
+class NotExtendedAbstractModule
 {
-    protected static $name = 'not-implemented-module';
+    protected static $name = 'not-extended-abstract-module';
 
     public function registerTasks(App $app)
     {

@@ -4,9 +4,9 @@ namespace Eraple\Test\Data\Stub;
 
 use Eraple\App;
 
-class NotImplementedTask
+class NotExtendedAbstractTask
 {
-    protected static $name = 'not-implemented-task';
+    protected static $name = 'not-extended-abstract-task';
 
     public function run(App $app, array $data = [])
     {

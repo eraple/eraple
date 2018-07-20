@@ -241,7 +241,7 @@ class App implements ContainerInterface
         $isIdInterfaceAndEntryClass = interface_exists($id) && is_string($entry) && class_exists($entry);
 
         /* process entry with id as interface and entry as class */
-        if ($isIdInterfaceAndEntryClass) $entry = ['concrete' => $entry];
+        if ($isIdInterfaceAndEntryClass) $entry = ['class' => $entry];
 
         /* set service to the application */
         $this->services[$id] = $entry;
@@ -278,10 +278,10 @@ class App implements ContainerInterface
         $this->isEntryCircularDependent('instance', $id);
 
         /* entry not found and not instantiable */
-        if (!$this->has($id)) throw new NotFoundException();
+        if (!$this->has($id) && is_null($entry)) throw new NotFoundException();
 
         /* entry not found but instantiable */
-        if (!isset($this->services[$id])) {
+        if (!isset($this->services[$id]) && is_null($entry)) {
             $instance = $this->injector->create($id);
             /* remove stack entry */
             array_pop($this->dependencyStack['instance']);
@@ -292,7 +292,7 @@ class App implements ContainerInterface
         /* entry found and instantiable */
         $functions = ['getEntryInstanceByIdKey', 'getEntryInstanceByIdClass', 'getEntryInstanceByIdInterface', 'getEntryInstanceByIdAlias'];
         $entry = !is_null($entry) ? $entry : $this->services[$id];
-        $entry = is_array($entry) && is_array($this->services[$id]) ? array_merge($this->services[$id], $entry) : $entry;
+        $entry = is_array($entry) && isset($this->services[$id]) && is_array($this->services[$id]) ? array_merge($this->services[$id], $entry) : $entry;
         foreach ($functions as $function) {
             $instance = $this->$function($id, $entry);
             if (!is_null($instance)) {
@@ -356,7 +356,8 @@ class App implements ContainerInterface
             $instance = $this->injector->create($id, $parameters);
 
             /* save instance to services if singleton is true */
-            if (isset($entry['singleton']) && $entry['singleton'] === true) $this->services[$id]['instance'] = $instance;
+            $singleton = isset($entry['singleton']) ? $entry['singleton'] : false;
+            if (isset($this->services[$id]) && $singleton === true) $this->services[$id]['instance'] = $instance;
 
             return $instance;
         }
@@ -375,12 +376,20 @@ class App implements ContainerInterface
      */
     protected function getEntryInstanceByIdInterface(string $id, $entry)
     {
-        if (interface_exists($id) && is_array($entry) && isset($entry['concrete']) && class_exists($entry['concrete'])) {
-            $concrete = $entry['concrete'];
-            unset($entry['concrete']);
+        if (interface_exists($id) && is_array($entry) && isset($entry['class']) && class_exists($entry['class'])) {
+            $class = $entry['class'];
+            unset($entry['class']);
+            $singleton = isset($entry['singleton']) ? $entry['singleton'] : false;
+            unset($entry['singleton']);
             $entry = count($entry) ? $entry : null;
 
-            return $this->get($concrete, $entry);
+            /* create class instance with parameters */
+            $instance = $this->get($class, $entry);
+
+            /* save instance to services if singleton is true */
+            if (isset($this->services[$id]) && $singleton === true) $this->services[$id]['instance'] = $instance;
+
+            return $instance;
         }
 
         return null;
