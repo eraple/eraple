@@ -246,23 +246,14 @@ class App implements ContainerInterface
         /* check entry is null then return null */
         if (is_null($entry)) return null;
 
-        /* check id is not class and not interface */
-        $isIdNotClassAndNotInterface = !class_exists($id) && !interface_exists($id);
-
         /* discard entry with invalid name */
-        if ($isIdNotClassAndNotInterface && !$this->isNameValid($id)) return null;
-
-        /* check entry is not alias and not instance */
-        $isEntryNotAliasAndNotInstance = !is_array($entry) || (!key_exists('typeOf', $entry) && !key_exists('instance', $entry));
+        if (!class_exists($id) && !interface_exists($id) && !$this->isNameValid($id)) return null;
 
         /* process entry with id as key and entry as value */
-        if ($isIdNotClassAndNotInterface && $isEntryNotAliasAndNotInstance) $entry = ['instance' => $entry];
-
-        /* check id is interface and entry is class */
-        $isIdInterfaceAndEntryClass = interface_exists($id) && is_string($entry) && class_exists($entry);
+        if ($this->isServiceKeyValuePair($id, $entry)) $entry = ['instance' => $entry];
 
         /* process entry with id as interface and entry as class */
-        if ($isIdInterfaceAndEntryClass) $entry = ['class' => $entry];
+        if ($this->isServiceInterfaceClassPair($id, $entry)) $entry = ['class' => $entry];
 
         return $entry;
     }
@@ -338,7 +329,7 @@ class App implements ContainerInterface
      */
     protected function getEntryInstanceByIdKey(string $id, $entry)
     {
-        if (is_array($entry) && isset($entry['instance'])) {
+        if ($this->isServiceKeyConfigPair($id, $entry)) {
             if ($entry['instance'] instanceof \Closure) {
                 return $entry['instance']($this);
             } else {
@@ -360,7 +351,7 @@ class App implements ContainerInterface
      */
     protected function getEntryInstanceByIdClass(string $id, $entry)
     {
-        if (class_exists($id) && is_array($entry)) {
+        if ($this->isServiceClassConfigPair($id, $entry)) {
             $parameters = isset($entry['parameters']) ? $entry['parameters'] : [];
             $preferences = isset($entry['preferences']) ? $entry['preferences'] : [];
 
@@ -397,7 +388,7 @@ class App implements ContainerInterface
      */
     protected function getEntryInstanceByIdInterface(string $id, $entry)
     {
-        if (interface_exists($id) && is_array($entry) && isset($entry['class']) && class_exists($entry['class'])) {
+        if ($this->isServiceInterfaceConfigPair($id, $entry)) {
             $class = $entry['class'];
             unset($entry['class']);
             $singleton = isset($entry['singleton']) ? $entry['singleton'] : false;
@@ -427,7 +418,7 @@ class App implements ContainerInterface
      */
     protected function getEntryInstanceByIdAlias(string $id, $entry)
     {
-        if (!class_exists($id) && !interface_exists($id) && is_array($entry) && isset($entry['typeOf'])) {
+        if ($this->isServiceAliasConfigPair($id, $entry)) {
             $id = $entry['typeOf'];
             unset($entry['typeOf']);
             $entry = count($entry) ? $entry : null;
