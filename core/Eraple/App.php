@@ -225,11 +225,32 @@ class App implements ContainerInterface
      */
     public function set(string $id, $entry)
     {
+        $entry = $this->prepareServiceEntry($id, $entry);
+
+        /* set service to the application */
+        if (!is_null($entry)) $this->services[$id] = $entry;
+
+        return $this;
+    }
+
+    /**
+     * Prepare service before registering it to the application.
+     *
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
+     *
+     * @return array|null
+     */
+    protected function prepareServiceEntry(string $id, $entry)
+    {
+        /* check entry is null then return null */
+        if (is_null($entry)) return null;
+
         /* check id is not class and not interface */
         $isIdNotClassAndNotInterface = !class_exists($id) && !interface_exists($id);
 
         /* discard entry with invalid name */
-        if ($isIdNotClassAndNotInterface && !$this->isNameValid($id)) return $this;
+        if ($isIdNotClassAndNotInterface && !$this->isNameValid($id)) return null;
 
         /* check entry is not alias and not instance */
         $isEntryNotAliasAndNotInstance = !is_array($entry) || (!key_exists('typeOf', $entry) && !key_exists('instance', $entry));
@@ -243,10 +264,7 @@ class App implements ContainerInterface
         /* process entry with id as interface and entry as class */
         if ($isIdInterfaceAndEntryClass) $entry = ['class' => $entry];
 
-        /* set service to the application */
-        $this->services[$id] = $entry;
-
-        return $this;
+        return $entry;
     }
 
     /**
@@ -276,6 +294,9 @@ class App implements ContainerInterface
     {
         /* add stack entry */
         $this->isEntryCircularDependent('instance', $id);
+
+        /* prepare service entry */
+        $entry = $this->prepareServiceEntry($id, $entry);
 
         /* entry not found and not instantiable */
         if (!$this->has($id) && is_null($entry)) throw new NotFoundException();

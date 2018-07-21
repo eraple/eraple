@@ -42,6 +42,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
     /* @var string */
     protected $rootPath;
 
+    /* setup application instance */
     public function setUp()
     {
         $this->rootPath = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'app';
@@ -342,8 +343,8 @@ class AppTest extends \PHPUnit\Framework\TestCase
     public function testExtraThrowContainerException()
     {
         $this->expectException(ContainerException::class);
-        $this->app->set('name', null);
-        $this->app->get('name');
+        $this->app->set(SampleServiceInterface::class, '');
+        $this->app->get(SampleServiceInterface::class);
     }
 
     /* test it can get instance of entry not found but creatable */
@@ -470,5 +471,37 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
         $this->assertSame('Dipali Sidhpura', $sampleService->name);
         $this->assertInstanceOf(SampleServiceForPreferences::class, $sampleService->sampleServiceForPreferences);
+    }
+
+    /* test it can get instance of entry get without registering service */
+    public function testExtraGetInstanceOfEntryWithoutRegisteringService()
+    {
+        /* key and value pair */
+        $this->assertSame('Amit Sidhpura', $this->app->get('name', 'Amit Sidhpura'));
+
+        /* class and configuration pair */
+        $classConfiguration = [
+            'preferences' => [SampleServiceForPreferencesInterface::class => SampleServiceForPreferences::class],
+            'parameters'  => ['name' => 'Amit Sidhpura']
+        ];
+        $sampleService = $this->app->get(SampleServiceHasParameters::class, $classConfiguration);
+        $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
+        $this->assertSame('Amit Sidhpura', $sampleService->name);
+        $this->assertInstanceOf(SampleServiceForPreferences::class, $sampleService->sampleServiceForPreferences);
+
+        /* interface and class pair */
+        $interfaceConfiguration = [
+            'class'       => SampleServiceHasParameters::class,
+            'preferences' => [SampleServiceForPreferencesInterface::class => SampleServiceForPreferences::class],
+            'parameters'  => ['name' => 'Amit Sidhpura']
+        ];
+        $sampleService = $this->app->get(SampleServiceInterface::class, $interfaceConfiguration);
+        $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
+        $this->assertSame('Amit Sidhpura', $sampleService->name);
+        $this->assertInstanceOf(SampleServiceForPreferences::class, $sampleService->sampleServiceForPreferences);
+
+        /* alias and configuration pair */
+        $this->app->set('name', 'Amit Sidhpura');
+        $this->assertSame('Amit Sidhpura', $this->app->get('name-alias', ['typeOf' => 'name']));
     }
 }
