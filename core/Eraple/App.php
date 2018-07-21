@@ -268,7 +268,7 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return mixed
-     * @throws NotFoundException|ContainerException|\ReflectionException
+     * @throws CircularDependencyException|NotFoundException|ContainerException|\ReflectionException
      */
     public function get($id, $entry = null)
     {
@@ -336,7 +336,7 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return null|object
-     * @throws NotFoundException|ContainerException|\ReflectionException
+     * @throws CircularDependencyException|NotFoundException|ContainerException|\ReflectionException
      */
     protected function getEntryInstanceByIdClass(string $id, $entry)
     {
@@ -364,7 +364,7 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return null|object
-     * @throws NotFoundException|ContainerException|\ReflectionException
+     * @throws CircularDependencyException|NotFoundException|ContainerException|\ReflectionException
      */
     protected function getEntryInstanceByIdInterface(string $id, $entry)
     {
@@ -394,7 +394,7 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return null|mixed
-     * @throws NotFoundException|ContainerException|\ReflectionException
+     * @throws CircularDependencyException|NotFoundException|ContainerException|\ReflectionException
      */
     protected function getEntryInstanceByIdAlias(string $id, $entry)
     {
@@ -416,6 +416,7 @@ class App implements ContainerInterface
      * @param  array $data Data passed to the task
      *
      * @return array
+     * @throws CircularDependencyException
      */
     public function fire(string $event, array $data = [])
     {
@@ -437,6 +438,7 @@ class App implements ContainerInterface
      * @param  array $data Data passed to the task
      *
      * @return array
+     * @throws CircularDependencyException
      */
     public function runTask(string $task, array $data = [])
     {
@@ -479,7 +481,7 @@ class App implements ContainerInterface
      * @param  array $parameters Array of parameters to pass to method
      *
      * @return null|mixed
-     * @throws NotFoundException|ContainerException|\ReflectionException
+     * @throws CircularDependencyException|NotFoundException|ContainerException|\ReflectionException
      */
     public function runMethod(string $id, string $method = '__construct', array $preferences = [], array $parameters = [])
     {
@@ -515,6 +517,16 @@ class App implements ContainerInterface
         }
 
         return $this->get($id)->$method(...$parameters);
+    }
+
+    /**
+     * Get reflection classes registered to the application.
+     *
+     * @return \ReflectionClass[]
+     */
+    public function getReflectionClasses()
+    {
+        return $this->reflectionClasses;
     }
 
     /**

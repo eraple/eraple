@@ -211,6 +211,15 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
     }
 
+    /* test it can get reflection classes */
+    public function testFunctionGetReflectionClasses()
+    {
+        $this->app->runMethod(SampleService::class);
+        $reflectionClasses = $this->app->getReflectionClasses();
+        $this->assertArrayHasKey(SampleService::class, $reflectionClasses);
+        $this->assertInstanceOf(\ReflectionClass::class, $reflectionClasses[SampleService::class]);
+    }
+
     /* test it can get modules */
     public function testFunctionGetModules()
     {
