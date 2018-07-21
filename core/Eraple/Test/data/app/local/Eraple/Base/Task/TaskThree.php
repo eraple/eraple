@@ -11,12 +11,13 @@ class TaskThree extends Task
 
     protected static $description = 'I will do task three.';
 
-    protected static $event = 'event_start';
+    protected static $event = 'end';
 
-    protected static $index = 1;
+    protected static $index = 0;
+
+    protected static $services = ['key-three' => 'value-three'];
 
     public function run(App $app, array $data = [])
     {
-        echo 'task three completed.' . PHP_EOL;
     }
 }

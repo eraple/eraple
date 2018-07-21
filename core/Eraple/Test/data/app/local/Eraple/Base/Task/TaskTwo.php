@@ -11,16 +11,13 @@ class TaskTwo extends Task
 
     protected static $description = 'I will do task two.';
 
-    protected static $event = 'event_just-an-event';
+    protected static $event = 'before-end';
 
-    protected static $index = 1;
+    protected static $index = 0;
+
+    protected static $services = ['key-two' => 'value-two'];
 
     public function run(App $app, array $data = [])
     {
-        echo 'task two completed.' . PHP_EOL;
-
-        $data['name'] = $data['name'] . ' updated';
-
-        return $data;
     }
 }

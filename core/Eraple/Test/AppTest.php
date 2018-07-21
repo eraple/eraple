@@ -9,6 +9,10 @@ use Zend\Di\Exception\MissingPropertyException;
 use Eraple\Exception\CircularDependencyException;
 use Eraple\Exception\NotFoundException;
 use Eraple\Exception\ContainerException;
+use Eraple\Test\Data\App\Local\Eraple\Base\Module;
+use Eraple\Test\Data\App\Local\Eraple\Base\Task\TaskOne;
+use Eraple\Test\Data\App\Local\Eraple\Base\Task\TaskTwo;
+use Eraple\Test\Data\App\Local\Eraple\Base\Task\TaskThree;
 use Eraple\Test\Data\Stub\SampleModule;
 use Eraple\Test\Data\Stub\InvalidNameModule;
 use Eraple\Test\Data\Stub\NotExtendedAbstractModule;
@@ -74,7 +78,22 @@ class AppTest extends \PHPUnit\Framework\TestCase
     }
 
     /* test it can run */
-    public function testFunctionRun() { $this->assertTrue(true); }
+    public function testFunctionRun()
+    {
+        $this->assertSame([], $this->app->getModules());
+        $this->assertSame([], $this->app->getTasks());
+        $this->assertSame([], $this->app->getServices());
+        $this->app->run();
+        $modules = ['base' => Module::class];
+        $this->assertSame($modules, $this->app->getModules());
+        $tasks = ['task-one' => TaskOne::class, 'task-two' => TaskTwo::class, 'task-three' => TaskThree::class];
+        $this->assertSame($tasks, $this->app->getTasks());
+        $this->assertSame(['task-one' => TaskOne::class], $this->app->getTasks(['event' => 'start']));
+        $this->assertSame(['task-two' => TaskTwo::class], $this->app->getTasks(['event' => 'before-end']));
+        $this->assertSame(['task-three' => TaskThree::class], $this->app->getTasks(['event' => 'end']));
+        $services = ['key-one' => ['instance' => 'value-one'], 'key-two' => ['instance' => 'value-two'], 'key-three' => ['instance' => 'value-three']];
+        $this->assertSame($services, $this->app->getServices());
+    }
 
     /* test it can register module */
     public function testFunctionRegisterModule()
@@ -223,10 +242,29 @@ class AppTest extends \PHPUnit\Framework\TestCase
     }
 
     /* test it can get dependency stack */
-    public function testFunctionGetDependencyStack() { $this->assertTrue(true); }
+    public function testFunctionGetDependencyStack()
+    {
+        /* test covered in testFunctionIsEntryCircularDependent */
+        $this->assertTrue(true);
+    }
 
     /* test it can flush all modules, tasks, services and instance stack of the application */
-    public function testFunctionFlush() { $this->assertTrue(true); }
+    public function testFunctionFlush()
+    {
+        $this->app->registerModule(SampleModule::class);
+        $this->app->registerTask(SampleTask::class);
+        $this->app->registerService('name', 'Amit Sidhpura');
+        $this->app->isEntryCircularDependent('sample-stack', 'sample-entry');
+        $this->assertSame(['sample-module' => SampleModule::class], $this->app->getModules());
+        $this->assertSame(['sample-task' => SampleTask::class], $this->app->getTasks());
+        $this->assertSame(['name' => ['instance' => 'Amit Sidhpura']], $this->app->getServices());
+        $this->assertSame(['sample-stack' => ['sample-entry']], $this->app->getDependencyStack());
+        $this->app->flush();
+        $this->assertSame([], $this->app->getModules());
+        $this->assertSame([], $this->app->getTasks());
+        $this->assertSame([], $this->app->getServices());
+        $this->assertSame([], $this->app->getDependencyStack());
+    }
 
     /* test it can get root path */
     public function testFunctionGetRootPath()
@@ -317,7 +355,17 @@ class AppTest extends \PHPUnit\Framework\TestCase
     }
 
     /* test it can check whether entry is circular dependent */
-    public function testFunctionIsEntryCircularDependent() { $this->assertTrue(true); }
+    public function testFunctionIsEntryCircularDependent()
+    {
+        $this->app->isEntryCircularDependent('sample1-id', 'sample1-entry1');
+        $this->app->isEntryCircularDependent('sample1-id', 'sample1-entry2');
+        $this->app->isEntryCircularDependent('sample2-id', 'sample2-entry1');
+        $this->app->isEntryCircularDependent('sample2-id', 'sample2-entry2');
+        $dependencyStack = ['sample1-id' => ['sample1-entry1', 'sample1-entry2'], 'sample2-id' => ['sample2-entry1', 'sample2-entry2']];
+        $this->assertSame($dependencyStack, $this->app->getDependencyStack());
+        $this->expectException(CircularDependencyException::class);
+        $this->app->isEntryCircularDependent('sample1-id', 'sample1-entry1');
+    }
 
     /* test it can convert delimiters string to camelcase string */
     public function testFunctionCamelize()

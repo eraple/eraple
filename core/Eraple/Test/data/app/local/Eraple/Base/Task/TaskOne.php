@@ -11,16 +11,13 @@ class TaskOne extends Task
 
     protected static $description = 'I will do task one.';
 
-    protected static $event = 'after_task-seven';
+    protected static $event = 'start';
 
     protected static $index = 0;
 
+    protected static $services = ['key-one' => 'value-one'];
+
     public function run(App $app, array $data = [])
     {
-        echo 'task one completed.' . PHP_EOL;
-
-        $data = $app->fire('just-an-event', ['name' => 'amit sidhpura']);
-
-        print_r($data);
     }
 }
