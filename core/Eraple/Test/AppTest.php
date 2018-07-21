@@ -258,6 +258,64 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertFalse($this->app->isNameValid('task_one'));
     }
 
+    /* test it can check whether service is key-value pair */
+    public function testFunctionIsServiceKeyValuePair()
+    {
+        $this->assertTrue($this->app->isServiceKeyValuePair('name', 'Amit Sidhpura'));
+        $this->assertTrue($this->app->isServiceKeyValuePair('function', function () { }));
+        $this->assertTrue($this->app->isServiceKeyValuePair('array', []));
+        $this->assertTrue($this->app->isServiceKeyValuePair('object', new \stdClass()));
+        $this->assertFalse($this->app->isServiceKeyValuePair(SampleService::class, ''));
+        $this->assertFalse($this->app->isServiceKeyValuePair(SampleServiceInterface::class, ''));
+        $this->assertFalse($this->app->isServiceKeyValuePair('alias', ['typeOf' => 'name']));
+        $this->assertFalse($this->app->isServiceKeyValuePair('instance', ['instance' => 'Amit Sidhpura']));
+    }
+
+    /* test it can check whether service is key-config pair */
+    public function testFunctionIsServiceKeyConfigPair()
+    {
+        $this->assertTrue($this->app->isServiceKeyConfigPair('instance', ['instance' => 'Amit Sidhpura']));
+        $this->assertFalse($this->app->isServiceKeyConfigPair('instance', []));
+        $this->assertFalse($this->app->isServiceKeyConfigPair('instance', 'Amit Sidhpura'));
+    }
+
+    /* test it can check whether service is class-config pair */
+    public function testFunctionIsServiceClassConfigPair()
+    {
+        $this->assertTrue($this->app->isServiceClassConfigPair(SampleService::class, []));
+        $this->assertFalse($this->app->isServiceClassConfigPair('name', []));
+        $this->assertFalse($this->app->isServiceClassConfigPair(SampleService::class, ''));
+    }
+
+    /* test it can check whether service is interface-class pair */
+    public function testFunctionIsServiceInterfaceClassPair()
+    {
+        $this->assertTrue($this->app->isServiceInterfaceClassPair(SampleServiceInterface::class, SampleService::class));
+        $this->assertFalse($this->app->isServiceInterfaceClassPair('sample-service', SampleService::class));
+        $this->assertFalse($this->app->isServiceInterfaceClassPair(SampleServiceInterface::class, []));
+        $this->assertFalse($this->app->isServiceInterfaceClassPair(SampleServiceInterface::class, 'sample-service-interface'));
+    }
+
+    /* test it can check whether service is interface-config pair */
+    public function testFunctionIsServiceInterfaceConfigPair()
+    {
+        $this->assertTrue($this->app->isServiceInterfaceConfigPair(SampleServiceInterface::class, ['class' => SampleService::class]));
+        $this->assertFalse($this->app->isServiceInterfaceConfigPair('sample-service', ['class' => SampleService::class]));
+        $this->assertFalse($this->app->isServiceInterfaceConfigPair(SampleServiceInterface::class, 'sample-service-interface'));
+        $this->assertFalse($this->app->isServiceInterfaceConfigPair(SampleServiceInterface::class, []));
+        $this->assertFalse($this->app->isServiceInterfaceConfigPair(SampleServiceInterface::class, ['class' => 'sample-service']));
+    }
+
+    /* test it can check whether service is alias-config pair */
+    public function testFunctionIsServiceAliasConfigPair()
+    {
+        $this->assertTrue($this->app->isServiceAliasConfigPair('name-alias', ['typeOf' => 'name']));
+        $this->assertFalse($this->app->isServiceAliasConfigPair(SampleService::class, ['typeOf' => 'name']));
+        $this->assertFalse($this->app->isServiceAliasConfigPair(SampleServiceInterface::class, ['typeOf' => 'name']));
+        $this->assertFalse($this->app->isServiceAliasConfigPair('name-alias', ''));
+        $this->assertFalse($this->app->isServiceAliasConfigPair('name-alias', []));
+    }
+
     /* test it can check whether entry is circular dependent */
     public function testFunctionIsEntryCircularDependent() { $this->assertTrue(true); }
 

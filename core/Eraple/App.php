@@ -646,6 +646,109 @@ class App implements ContainerInterface
     }
 
     /**
+     * Check if service is key-value pair.
+     *
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
+     *
+     * @return bool
+     */
+    public function isServiceKeyValuePair(string $id, $entry)
+    {
+        if (!class_exists($id) && !interface_exists($id)
+            && (!is_array($entry) || (!key_exists('typeOf', $entry) && !key_exists('instance', $entry)))) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if service is key-config pair.
+     *
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
+     *
+     * @return bool
+     */
+    public function isServiceKeyConfigPair(string $id, $entry)
+    {
+        if (is_array($entry) && key_exists('instance', $entry)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if service is class-config pair.
+     *
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
+     *
+     * @return bool
+     */
+    public function isServiceClassConfigPair(string $id, $entry)
+    {
+        if (class_exists($id) && is_array($entry)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if service is interface-class pair.
+     *
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
+     *
+     * @return bool
+     */
+    public function isServiceInterfaceClassPair(string $id, $entry)
+    {
+        if (interface_exists($id) && is_string($entry) && class_exists($entry)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if service is interface-config pair.
+     *
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
+     *
+     * @return bool
+     */
+    public function isServiceInterfaceConfigPair(string $id, $entry)
+    {
+        if (interface_exists($id) && is_array($entry) && key_exists('class', $entry) && class_exists($entry['class'])) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if service is alias-config pair.
+     *
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
+     *
+     * @return bool
+     */
+    public function isServiceAliasConfigPair(string $id, $entry)
+    {
+        if (!class_exists($id) && !interface_exists($id) && is_array($entry) && key_exists('typeOf', $entry)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Check if there is circular dependency.
      *
      * @param string $stackId Unique stack id
