@@ -2,8 +2,6 @@
 
 namespace Eraple\Exception;
 
-use Zend\Di\Exception\CircularDependencyException as ZendDiCircularDependencyException;
-
-class CircularDependencyException extends ZendDiCircularDependencyException
+class CircularDependencyException extends \Exception
 {
 }

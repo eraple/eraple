@@ -3,9 +3,6 @@
 namespace Eraple\Test;
 
 use Eraple\App;
-use Zend\Di\Injector;
-use Zend\Di\Definition\RuntimeDefinition;
-use Zend\Di\Exception\MissingPropertyException;
 use Eraple\Exception\CircularDependencyException;
 use Eraple\Exception\NotFoundException;
 use Eraple\Exception\ContainerException;
@@ -53,13 +50,11 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->app = new App($this->rootPath);
     }
 
-    /* test it can instantiate and set root path, injector and runtime definition */
+    /* test it can instantiate and set root path */
     public function testFunctionConstruct()
     {
         $app = new App('some_path_here');
         $this->assertSame('some_path_here' . DIRECTORY_SEPARATOR, $app->getRootPath());
-        $this->assertInstanceOf(Injector::class, $app->getInjector());
-        $this->assertInstanceOf(RuntimeDefinition::class, $app->getDefinition());
     }
 
     /* test it can instantiate and get global instance */
@@ -167,14 +162,14 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->app->set('name', 'Amit Sidhpura');
         $this->assertTrue($this->app->has('name'));
 
-        /* entry not set but injector can create it */
+        /* entry not set but application can create it */
         $this->assertTrue($this->app->has(SampleService::class));
 
-        /* entry not set and injector cannot instantiate non existent class */
+        /* entry not set and application cannot instantiate non existent class */
         /** @noinspection PhpUndefinedClassInspection */
         $this->assertFalse($this->app->has(SampleServiceNotExists::class));
 
-        /* entry not set and injector cannot instantiate interface */
+        /* entry not set and application cannot instantiate interface */
         $this->assertFalse($this->app->has(SampleServiceInterface::class));
     }
 
@@ -206,21 +201,17 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->app->runTask(TaskAFollowsTaskC::class);
     }
 
-    /* test it can get runtime definition */
-    public function testFunctionGetInjector()
+    /* test it can run method */
+    public function testFunctionRunMethod()
     {
-        /* test covered in testFunctionConstruct */
-        $this->assertTrue(true);
+        $this->assertInstanceOf(SampleService::class, $this->app->runMethod(SampleService::class));
+        $preferences = [SampleServiceForPreferencesInterface::class => SampleServiceForPreferences::class];
+        $parameters = ['name' => 'Amit Sidhpura'];
+        $sampleService = $this->app->runMethod(SampleServiceHasParameters::class, '__construct', $preferences, $parameters);
+        $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
     }
 
     /* test it can get modules */
-    public function testFunctionGetDefinition()
-    {
-        /* test covered in testFunctionConstruct */
-        $this->assertTrue(true);
-    }
-
-    /* test it can get injector */
     public function testFunctionGetModules()
     {
         /* test covered in testFunctionRegisterModule */
@@ -435,14 +426,6 @@ class AppTest extends \PHPUnit\Framework\TestCase
     {
         $this->expectException(NotFoundException::class);
         $this->app->get('name');
-    }
-
-    /* test it can throw missing property exception when injector cannot resolve a parameter */
-    public function testExtraThrowMissingPropertyException()
-    {
-        $this->expectException(MissingPropertyException::class);
-        $this->app->set(SampleServiceInterface::class, ServiceParameterCouldNotBeResolved::class);
-        $this->app->get(SampleServiceInterface::class);
     }
 
     /* test it can throw container exception when entry found but not instantiable */

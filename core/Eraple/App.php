@@ -3,8 +3,6 @@
 namespace Eraple;
 
 use Psr\Container\ContainerInterface;
-use Zend\Di\Injector;
-use Zend\Di\Definition\RuntimeDefinition;
 use Eraple\Exception\NotFoundException;
 use Eraple\Exception\CircularDependencyException;
 use Eraple\Exception\ContainerException;
@@ -33,18 +31,11 @@ class App implements ContainerInterface
     protected static $instance;
 
     /**
-     * Dependency injector.
+     * Registered reflection classes.
      *
-     * @var Injector
+     * @var \ReflectionClass[]
      */
-    protected $injector;
-
-    /**
-     * Class definitions based on runtime reflection.
-     *
-     * @var RuntimeDefinition
-     */
-    protected $definition;
+    protected $reflectionClasses = [];
 
     /**
      * Registered modules.
@@ -82,8 +73,6 @@ class App implements ContainerInterface
     public function __construct(string $rootPath = null)
     {
         $this->rootPath = $rootPath;
-        $this->injector = new Injector(null, $this);
-        $this->definition = new RuntimeDefinition();
     }
 
     /**
@@ -269,7 +258,7 @@ class App implements ContainerInterface
     {
         if (isset($this->services[$id])) return true;
 
-        return $this->injector->canCreate($id);
+        return class_exists($id) && !interface_exists($id);
     }
 
     /**
@@ -279,7 +268,7 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return mixed
-     * @throws NotFoundException|ContainerException
+     * @throws NotFoundException|ContainerException|\ReflectionException
      */
     public function get($id, $entry = null)
     {
@@ -290,11 +279,11 @@ class App implements ContainerInterface
         $entry = $this->prepareServiceEntry($id, $entry);
 
         /* entry not found and not instantiable */
-        if (!$this->has($id) && is_null($entry)) throw new NotFoundException();
+        if (!$this->has($id) && is_null($entry)) throw new NotFoundException('Id "' . $id . '" no found.');
 
         /* entry not found but instantiable */
         if (!isset($this->services[$id]) && is_null($entry)) {
-            $instance = $this->injector->create($id);
+            $instance = $this->runMethod($id);
             /* remove stack entry */
             array_pop($this->dependencyStack['instance']);
 
@@ -347,7 +336,7 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return null|object
-     * @throws NotFoundException|ContainerException
+     * @throws NotFoundException|ContainerException|\ReflectionException
      */
     protected function getEntryInstanceByIdClass(string $id, $entry)
     {
@@ -355,17 +344,8 @@ class App implements ContainerInterface
             $parameters = isset($entry['parameters']) ? $entry['parameters'] : [];
             $preferences = isset($entry['preferences']) ? $entry['preferences'] : [];
 
-            /* add preferences as parameters */
-            $classParameters = $this->definition->getClassDefinition($id)->getParameters();
-            foreach ($classParameters as $classParameter) {
-                $classParameterName = $classParameter->getName();
-                if (isset($parameters[$classParameterName])) continue;
-                $classParameterType = $classParameter->getType();
-                if (isset($preferences[$classParameterType])) $parameters[$classParameterName] = $this->get($preferences[$classParameterType]);
-            }
-
             /* create class instance with parameters */
-            $instance = $this->injector->create($id, $parameters);
+            $instance = $this->runMethod($id, '__construct', $preferences, $parameters);
 
             /* save instance to services if singleton is true */
             $singleton = isset($entry['singleton']) ? $entry['singleton'] : false;
@@ -384,7 +364,7 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return null|object
-     * @throws NotFoundException|ContainerException
+     * @throws NotFoundException|ContainerException|\ReflectionException
      */
     protected function getEntryInstanceByIdInterface(string $id, $entry)
     {
@@ -414,7 +394,7 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return null|mixed
-     * @throws NotFoundException|ContainerException
+     * @throws NotFoundException|ContainerException|\ReflectionException
      */
     protected function getEntryInstanceByIdAlias(string $id, $entry)
     {
@@ -491,23 +471,50 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get injector instance of the application.
+     * Run class method with preferences and parameters and return output.
      *
-     * @return Injector
+     * @param string $id Id of an entry
+     * @param string $method Method to run
+     * @param  array $preferences Array that maps class or interface names to a service name
+     * @param  array $parameters Array of parameters to pass to method
+     *
+     * @return null|mixed
+     * @throws NotFoundException|ContainerException|\ReflectionException
      */
-    public function getInjector()
+    public function runMethod(string $id, string $method = '__construct', array $preferences = [], array $parameters = [])
     {
-        return $this->injector;
-    }
+        /* if class does not exists return null */
+        if (!class_exists($id)) return null;
 
-    /**
-     * Get runtime definition instance of the application.
-     *
-     * @return RuntimeDefinition
-     */
-    public function getDefinition()
-    {
-        return $this->definition;
+        /* if reflection class of id is not registered register it */
+        if (!isset($this->reflectionClasses[$id])) $this->reflectionClasses[$id] = new \ReflectionClass($id);
+
+        /* check if method is constructor */
+        $isMethodConstructor = strcmp($method, '__construct') === 0;
+
+        /* if method is constructor and constructor does not exist return instance without parameters */
+        if ($isMethodConstructor && is_null($this->reflectionClasses[$id]->getConstructor())) return new $id();
+
+        /* resolve parameters */
+        $classParameters = $this->reflectionClasses[$id]->getMethod($method)->getParameters();
+        foreach ($classParameters as $classParameter) {
+            $classParameterName = $classParameter->getName();
+            if (isset($parameters[$classParameterName])) continue;
+            $classParameterType = $classParameter->getType()->getName();
+            $preference = isset($preferences[$classParameterType]) ? $preferences[$classParameterType] : $classParameterType;
+            $parameters[$classParameterName] = $this->get($preference);
+        }
+
+        /* arrange parameters in sequence method accepts */
+        $classParametersNames = array_map(function (\ReflectionParameter $parameter) { return $parameter->getName(); }, $classParameters);
+        $parameters = array_values(array_merge(array_flip($classParametersNames), $parameters));
+
+        /* return output */
+        if ($isMethodConstructor) {
+            return new $id(...$parameters);
+        }
+
+        return $this->get($id)->$method(...$parameters);
     }
 
     /**
