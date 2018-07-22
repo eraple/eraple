@@ -10,7 +10,7 @@
             "name": "Amit Sidhpura",
             "email": "amit@eraple.com",
             "homepage": "https://www.eraple.com",
-            "role": "Developer"
+            "role": "Creator"
         }
     ],
     "support": {
@@ -31,7 +31,6 @@
     "autoload": {
         "psr-4": {
             "Eraple\\": [
-                "core/Eraple/",
                 "local/Eraple/"
             ]
         }
