@@ -90,8 +90,8 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertSame($services, $this->app->getServices());
     }
 
-    /* test it can register module */
-    public function testFunctionRegisterModule()
+    /* test it can set module */
+    public function testFunctionSetModule()
     {
         $this->app->setModule(SampleModule::class);
         $this->app->setModule(InvalidNameModule::class);
@@ -99,8 +99,8 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertSame(['sample-module' => SampleModule::class], $this->app->getModules());
     }
 
-    /* test it can register task */
-    public function testFunctionRegisterTask()
+    /* test it can set task */
+    public function testFunctionSetTask()
     {
         $this->app->setTask(SampleTask::class);
         $this->app->setModule(InvalidNameTask::class);
@@ -108,8 +108,8 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertSame(['sample-task' => SampleTask::class], $this->app->getTasks());
     }
 
-    /* test it can register service */
-    public function testFunctionRegisterService()
+    /* test it can set service */
+    public function testFunctionSetService()
     {
         /* test covered in testFunctionSet */
         $this->assertTrue(true);
@@ -223,14 +223,14 @@ class AppTest extends \PHPUnit\Framework\TestCase
     /* test it can get modules */
     public function testFunctionGetModules()
     {
-        /* test covered in testFunctionRegisterModule */
+        /* test covered in testFunctionSetModule */
         $this->assertTrue(true);
     }
 
     /* test it can get tasks */
     public function testFunctionGetTasks()
     {
-        /* test covered in testFunctionRegisterTask */
+        /* test covered in testFunctionSetTask */
         $this->assertTrue(true);
     }
 
@@ -571,8 +571,8 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertInstanceOf(SampleServiceForPreferences::class, $sampleService->sampleServiceForPreferences);
     }
 
-    /* test it can get instance of entry get without registering service */
-    public function testExtraGetInstanceOfEntryWithoutRegisteringService()
+    /* test it can get instance of entry get without setting service */
+    public function testExtraGetInstanceOfEntryWithoutSettingService()
     {
         /* key and value pair */
         $this->assertSame('Amit Sidhpura', $this->app->get('name', 'Amit Sidhpura'));

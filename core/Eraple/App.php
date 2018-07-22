@@ -31,28 +31,28 @@ class App implements ContainerInterface
     protected static $instance;
 
     /**
-     * Registered reflection classes.
+     * Set reflection classes.
      *
      * @var \ReflectionClass[]
      */
     protected $reflectionClasses = [];
 
     /**
-     * Registered modules.
+     * Set modules.
      *
      * @var Module[]
      */
     protected $modules = [];
 
     /**
-     * Registered tasks.
+     * Set tasks.
      *
      * @var Task[]
      */
     protected $tasks = [];
 
     /**
-     * Registered services.
+     * Set services.
      *
      * @var array
      */
@@ -106,9 +106,9 @@ class App implements ContainerInterface
      */
     public function run()
     {
-        $this->registerModules();
-        $this->registerTasks();
-        $this->registerServices();
+        $this->setModules();
+        $this->setTasks();
+        $this->setServices();
         $this->fire('before-start');
         $this->fire('start');
         $this->fire('after-start');
@@ -118,19 +118,19 @@ class App implements ContainerInterface
     }
 
     /**
-     * Register modules in local and vendor paths.
+     * Set modules in local and vendor paths.
      */
-    protected function registerModules()
+    protected function setModules()
     {
         /* collect local and vendor modules */
         $localModules = glob($this->getLocalPath() . '*' . DIRECTORY_SEPARATOR . '*');
         $vendorModules = glob($this->getVendorPath() . '*' . DIRECTORY_SEPARATOR . '*');
 
-        /* register modules */
+        /* set modules */
         foreach (array_merge($localModules, $vendorModules) as $module) {
             $module = trim($module, '/\\') . DIRECTORY_SEPARATOR . 'Module.php';
 
-            /* register module only if it is a valid eraple module */
+            /* set module only if it is a valid eraple module */
             if (file_exists($module) && is_subclass_of($module = require_once $module, Module::class)) {
                 $this->setModule($module);
             }
@@ -138,11 +138,11 @@ class App implements ContainerInterface
     }
 
     /**
-     * Register module tasks.
+     * Set module tasks.
      */
-    protected function registerTasks()
+    protected function setTasks()
     {
-        /* register tasks */
+        /* set tasks */
         foreach ($this->modules as $module) {
             $tasks = $module::getTasks();
             foreach ($tasks as $task) {
@@ -152,11 +152,11 @@ class App implements ContainerInterface
     }
 
     /**
-     * Register services.
+     * Set services.
      */
-    protected function registerServices()
+    protected function setServices()
     {
-        /* register services */
+        /* set services */
         foreach ($this->tasks as $task) {
             $services = $task::getServices();
 
@@ -224,7 +224,7 @@ class App implements ContainerInterface
     }
 
     /**
-     * Prepare service before registering it to the application.
+     * Prepare service before setting it to the application.
      *
      * @param string $id Id of an entry
      * @param  mixed $entry Entry of the application
@@ -489,7 +489,7 @@ class App implements ContainerInterface
         /* if class does not exists return null */
         if (!class_exists($id)) return null;
 
-        /* if reflection class of id is not registered register it */
+        /* if reflection class of id is not set set it */
         if (!isset($this->reflectionClasses[$id])) $this->reflectionClasses[$id] = new \ReflectionClass($id);
 
         /* check if method is constructor */
@@ -521,7 +521,7 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get reflection classes registered to the application.
+     * Get reflection classes set to the application.
      *
      * @return \ReflectionClass[]
      */
@@ -531,7 +531,7 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get all the modules registered to the application.
+     * Get all the modules set to the application.
      *
      * @return Module[]
      */
@@ -541,7 +541,7 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get all the tasks registered to the application.
+     * Get all the tasks set to the application.
      *
      * @param  array $filterBy Filter fields array
      * @param string $filterLogic Filter condition "and" or "or"
@@ -580,7 +580,7 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get all the services registered to the application.
+     * Get all the services set to the application.
      *
      * @return array
      */

@@ -2,6 +2,9 @@
 
 namespace Eraple;
 
+/**
+ * @method null init(...$parameters) Initialize module.
+ */
 abstract class Module
 {
     /**

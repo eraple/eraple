@@ -2,6 +2,9 @@
 
 namespace Eraple;
 
+/**
+ * @method null|array run(...$parameters) Run task.
+ */
 abstract class Task
 {
     /**
