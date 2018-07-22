@@ -6,11 +6,19 @@ class SampleServiceHasParameters implements SampleServiceInterface
 {
     public $name;
 
-    public $sampleServiceForPreferences;
+    public $sampleServiceForServicesArgument;
 
-    public function __construct(string $name, SampleServiceForServicesArgumentInterface $sampleServiceForPreferences)
+    public function __construct(string $name, SampleServiceForServicesArgumentInterface $sampleServiceForServicesArgument)
     {
         $this->name = $name;
-        $this->sampleServiceForPreferences = $sampleServiceForPreferences;
+        $this->sampleServiceForServicesArgument = $sampleServiceForServicesArgument;
+    }
+
+    public function methodHasParameters(string $name, SampleServiceForServicesArgumentInterface $sampleServiceForServicesArgument)
+    {
+        return [
+            'name'                             => $name,
+            'sampleServiceForServicesArgument' => $sampleServiceForServicesArgument
+        ];
     }
 }

@@ -204,11 +204,45 @@ class AppTest extends \PHPUnit\Framework\TestCase
     /* test it can run method */
     public function testFunctionRunMethod()
     {
-        $this->assertInstanceOf(SampleService::class, $this->app->runMethod(SampleService::class));
-        $preferences = [SampleServiceForServicesArgumentInterface::class => SampleServiceForServicesArgument::class];
+        /* method is not string or closure */
+        $this->assertNull($this->app->runMethod('some-class', true));
+
+        /* method is string and id not class */
+        $this->assertNull($this->app->runMethod('not-class', 'some-method'));
+
+        /* set reflection classes entry of the application */
+        /* if method is constructor and constructor does not exist return instance of the class */
+        $sampleService = $this->app->runMethod(SampleService::class);
+        $reflectionClasses = $this->app->getReflectionClasses();
+        $this->assertArrayHasKey(SampleService::class, $reflectionClasses);
+        $this->assertInstanceOf(\ReflectionClass::class, $reflectionClasses[SampleService::class]);
+        $this->assertInstanceOf(SampleService::class, $sampleService);
+
+        /* set reflection classes function entry of the application */
+        /* if method is closure with parameters return output by executing the function */
+        $function = function (string $name, SampleServiceInterface $sampleService) { return ['name' => $name, 'sampleService' => $sampleService]; };
+        $services = [SampleServiceInterface::class => SampleService::class];
         $parameters = ['name' => 'Amit Sidhpura'];
-        $sampleService = $this->app->runMethod(SampleServiceHasParameters::class, '__construct', $preferences, $parameters);
-        $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
+        $return = $this->app->runMethod('sample-closure', $function, $services, $parameters);
+        $reflectionClasses = $this->app->getReflectionClasses();
+        $this->assertArrayHasKey('sample-closure', $reflectionClasses);
+        $this->assertInstanceOf(\ReflectionFunction::class, $reflectionClasses['sample-closure']);
+        $this->assertSame('Amit Sidhpura', $return['name']);
+        $this->assertInstanceOf(SampleService::class, $return['sampleService']);
+
+        /* if method is constructor with parameters return instance of the class */
+        $services = [SampleServiceForServicesArgumentInterface::class => SampleServiceForServicesArgument::class];
+        $parameters = ['name' => 'Amit Sidhpura'];
+        $sampleServiceHasParameters = $this->app->runMethod(SampleServiceHasParameters::class, '__construct', $services, $parameters);
+        $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleServiceHasParameters);
+        $this->assertSame('Amit Sidhpura', $sampleServiceHasParameters->name);
+        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleServiceHasParameters->sampleServiceForServicesArgument);
+
+        /* if method is class method with parameters return output by executing the function */
+        $this->app->set(SampleServiceHasParameters::class, ['services' => $services, 'parameters' => $parameters]);
+        $return = $this->app->runMethod(SampleServiceHasParameters::class, 'methodHasParameters', $services, $parameters);
+        $this->assertSame('Amit Sidhpura', $return['name']);
+        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $return['sampleServiceForServicesArgument']);
     }
 
     /* test it can get reflection classes */
@@ -488,7 +522,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $sampleService = $this->app->get(SampleServiceHasParameters::class);
         $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
         $this->assertSame('Amit Sidhpura', $sampleService->name);
-        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleService->sampleServiceForPreferences);
+        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleService->sampleServiceForServicesArgument);
     }
 
     /* test it can get instance of existing interface */
@@ -520,7 +554,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $sampleService = $this->app->get(SampleServiceInterface::class);
         $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
         $this->assertSame('Amit Sidhpura', $sampleService->name);
-        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleService->sampleServiceForPreferences);
+        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleService->sampleServiceForServicesArgument);
     }
 
     /* test it can get instance of existing entry alias */
@@ -556,7 +590,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $sampleService = $this->app->get('sample-service');
         $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
         $this->assertSame('Amit Sidhpura', $sampleService->name);
-        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleService->sampleServiceForPreferences);
+        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleService->sampleServiceForServicesArgument);
 
         /* id is alias and entry is class with services and parameters */
         $classConfiguration = [
@@ -568,7 +602,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $sampleService = $this->app->get('sample-service');
         $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
         $this->assertSame('Dipali Sidhpura', $sampleService->name);
-        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleService->sampleServiceForPreferences);
+        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleService->sampleServiceForServicesArgument);
     }
 
     /* test it can get instance of entry get without setting service */
@@ -585,7 +619,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $sampleService = $this->app->get(SampleServiceHasParameters::class, $classConfiguration);
         $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
         $this->assertSame('Amit Sidhpura', $sampleService->name);
-        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleService->sampleServiceForPreferences);
+        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleService->sampleServiceForServicesArgument);
 
         /* interface and class pair */
         $interfaceConfiguration = [
@@ -596,7 +630,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $sampleService = $this->app->get(SampleServiceInterface::class, $interfaceConfiguration);
         $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
         $this->assertSame('Amit Sidhpura', $sampleService->name);
-        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleService->sampleServiceForPreferences);
+        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleService->sampleServiceForServicesArgument);
 
         /* alias and configuration pair */
         $this->app->set('name', 'Amit Sidhpura');

@@ -33,7 +33,7 @@ class App implements ContainerInterface
     /**
      * Set reflection classes.
      *
-     * @var \ReflectionClass[]
+     * @var \ReflectionClass[]|\ReflectionFunction[]
      */
     protected $reflectionClasses = [];
 
@@ -477,29 +477,38 @@ class App implements ContainerInterface
      * Run class method with services and parameters and return output.
      *
      * @param string $id Id of an entry
-     * @param string $method Method to run
+     * @param  mixed $method Class method or closure to run
      * @param  array $services Array that maps class or interface names to a service name
      * @param  array $parameters Array of parameters to pass to method
      *
      * @return null|mixed
      * @throws CircularDependencyException|NotFoundException|ContainerException|\ReflectionException
      */
-    public function runMethod(string $id, string $method = '__construct', array $services = [], array $parameters = [])
+    public function runMethod(string $id, $method = '__construct', array $services = [], array $parameters = [])
     {
-        /* if class does not exists return null */
-        if (!class_exists($id)) return null;
+        /* if method is not string and not closure return null */
+        if (!is_string($method) && !$method instanceof \Closure) return null;
 
-        /* if reflection class of id is not set set it */
-        if (!key_exists($id, $this->reflectionClasses)) $this->reflectionClasses[$id] = new \ReflectionClass($id);
+        /* if method is string and id is not class return null */
+        if (is_string($method) && !class_exists($id)) return null;
 
         /* check if method is constructor */
-        $isMethodConstructor = strcmp($method, '__construct') === 0;
+        $isMethodConstructor = is_string($method) && strcmp($method, '__construct') === 0;
+
+        /* if id is class and reflection not set set it */
+        if (is_string($method) && !key_exists($id, $this->reflectionClasses)) $this->reflectionClasses[$id] = new \ReflectionClass($id);
+
+        /* if method is closure and reflection not set set it */
+        if (!is_string($method) && !key_exists($id, $this->reflectionClasses)) $this->reflectionClasses[$id] = new \ReflectionFunction($method);
 
         /* if method is constructor and constructor does not exist return instance without parameters */
         if ($isMethodConstructor && is_null($this->reflectionClasses[$id]->getConstructor())) return new $id();
 
+        /* get reflection method */
+        $reflectionMethod = is_string($method) ? $this->reflectionClasses[$id]->getMethod($method) : $this->reflectionClasses[$id];
+
         /* resolve parameters */
-        $classParameters = $this->reflectionClasses[$id]->getMethod($method)->getParameters();
+        $classParameters = $reflectionMethod->getParameters();
         foreach ($classParameters as $classParameter) {
             $classParameterName = $classParameter->getName();
             if (key_exists($classParameterName, $parameters)) continue;
@@ -514,9 +523,8 @@ class App implements ContainerInterface
         $parameters = array_values(array_merge(array_flip($classParametersNames), $parameters));
 
         /* return output */
-        if ($isMethodConstructor) {
-            return new $id(...$parameters);
-        }
+        if ($isMethodConstructor) return new $id(...$parameters);
+        if (!is_string($method)) return $method(...$parameters);
 
         return $this->get($id)->$method(...$parameters);
     }
