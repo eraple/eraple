@@ -3,8 +3,8 @@
 namespace Eraple;
 
 use Psr\Container\ContainerInterface;
-use Eraple\Exception\NotFoundException;
 use Eraple\Exception\CircularDependencyException;
+use Eraple\Exception\NotFoundException;
 use Eraple\Exception\ContainerException;
 
 class App implements ContainerInterface
@@ -132,7 +132,7 @@ class App implements ContainerInterface
 
             /* register module only if it is a valid eraple module */
             if (file_exists($module) && is_subclass_of($module = require_once $module, Module::class)) {
-                $this->registerModule($module);
+                $this->setModule($module);
             }
         }
     }
@@ -144,9 +144,10 @@ class App implements ContainerInterface
     {
         /* register tasks */
         foreach ($this->modules as $module) {
-            /* @var $moduleInstance Module */
-            $moduleInstance = new $module();
-            $moduleInstance->registerTasks($this);
+            $tasks = $module::getTasks();
+            foreach ($tasks as $task) {
+                $this->setTask($task);
+            }
         }
     }
 
@@ -166,11 +167,11 @@ class App implements ContainerInterface
     }
 
     /**
-     * Register module with the application.
+     * Set a module to the application.
      *
      * @param string $class Module class
      */
-    public function registerModule(string $class)
+    public function setModule(string $class)
     {
         /* @var $class Module::class */
         if (!is_subclass_of($class, Module::class) || !$this->isNameValid($class::getName())) return;
@@ -179,11 +180,11 @@ class App implements ContainerInterface
     }
 
     /**
-     * Register task with the application.
+     * Set a task with the application.
      *
      * @param string $class Task class
      */
-    public function registerTask(string $class)
+    public function setTask(string $class)
     {
         /* @var $class Task::class */
         if (!is_subclass_of($class, Task::class) || !$this->isNameValid($class::getName())) return;
@@ -199,7 +200,7 @@ class App implements ContainerInterface
      *
      * @return $this
      */
-    public function registerService(string $id, $entry)
+    public function setService(string $id, $entry)
     {
         return $this->set($id, $entry);
     }

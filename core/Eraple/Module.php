@@ -26,11 +26,18 @@ abstract class Module
     protected static $description = 'No description found.';
 
     /**
+     * Module tasks.
+     *
+     * @var Task[]
+     */
+    protected static $tasks = [];
+
+    /**
      * Get the module name.
      *
      * @return string
      */
-    public static function getName()
+    public static function getName(): string
     {
         return static::$name;
     }
@@ -40,7 +47,7 @@ abstract class Module
      *
      * @return string
      */
-    public static function getVersion()
+    public static function getVersion(): string
     {
         return static::$version;
     }
@@ -50,17 +57,18 @@ abstract class Module
      *
      * @return string
      */
-    public static function getDescription()
+    public static function getDescription(): string
     {
         return static::$description;
     }
 
     /**
-     * Register module tasks.
+     * Get the module tasks.
      *
-     * @param App $app Application instance
-     *
-     * @return mixed
+     * @return Task[]
      */
-    abstract public function registerTasks(App $app);
+    public static function getTasks(): array
+    {
+        return static::$tasks;
+    }
 }

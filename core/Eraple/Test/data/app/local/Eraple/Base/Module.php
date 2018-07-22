@@ -2,7 +2,6 @@
 
 namespace Eraple\Test\Data\App\Local\Eraple\Base;
 
-use Eraple\App;
 use Eraple\Test\Data\App\Local\Eraple\Base\Task\TaskOne;
 use Eraple\Test\Data\App\Local\Eraple\Base\Task\TaskTwo;
 use Eraple\Test\Data\App\Local\Eraple\Base\Task\TaskThree;
@@ -15,12 +14,11 @@ class Module extends \Eraple\Module
 
     protected static $description = 'I will handle the base functions.';
 
-    public function registerTasks(App $app)
-    {
-        $app->registerTask(TaskOne::class);
-        $app->registerTask(TaskTwo::class);
-        $app->registerTask(TaskThree::class);
-    }
+    protected static $tasks = [
+        TaskOne::class,
+        TaskTwo::class,
+        TaskThree::class
+    ];
 }
 
 return Module::class;

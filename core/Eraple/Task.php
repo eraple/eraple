@@ -44,7 +44,7 @@ abstract class Task
      *
      * @return string
      */
-    public static function getName()
+    public static function getName(): string
     {
         return static::$name;
     }
@@ -54,7 +54,7 @@ abstract class Task
      *
      * @return string
      */
-    public static function getDescription()
+    public static function getDescription(): string
     {
         return static::$description;
     }
@@ -64,7 +64,7 @@ abstract class Task
      *
      * @return string
      */
-    public static function getEvent()
+    public static function getEvent(): string
     {
         return static::$event;
     }
@@ -74,26 +74,18 @@ abstract class Task
      *
      * @return int
      */
-    public static function getIndex()
+    public static function getIndex(): int
     {
         return static::$index;
     }
 
     /**
      * Get the task services.
+     *
+     * @return array
      */
-    public static function getServices()
+    public static function getServices(): array
     {
         return static::$services;
     }
-
-    /**
-     * Run the task.
-     *
-     * @param App $app Application instance
-     * @param array $data Data to process
-     *
-     * @return mixed
-     */
-    abstract public function run(App $app, array $data = []);
 }

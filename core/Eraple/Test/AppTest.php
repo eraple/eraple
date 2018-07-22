@@ -93,18 +93,18 @@ class AppTest extends \PHPUnit\Framework\TestCase
     /* test it can register module */
     public function testFunctionRegisterModule()
     {
-        $this->app->registerModule(SampleModule::class);
-        $this->app->registerModule(InvalidNameModule::class);
-        $this->app->registerModule(NotExtendedAbstractModule::class);
+        $this->app->setModule(SampleModule::class);
+        $this->app->setModule(InvalidNameModule::class);
+        $this->app->setModule(NotExtendedAbstractModule::class);
         $this->assertSame(['sample-module' => SampleModule::class], $this->app->getModules());
     }
 
     /* test it can register task */
     public function testFunctionRegisterTask()
     {
-        $this->app->registerTask(SampleTask::class);
-        $this->app->registerModule(InvalidNameTask::class);
-        $this->app->registerModule(NotExtendedAbstractTask::class);
+        $this->app->setTask(SampleTask::class);
+        $this->app->setModule(InvalidNameTask::class);
+        $this->app->setModule(NotExtendedAbstractTask::class);
         $this->assertSame(['sample-task' => SampleTask::class], $this->app->getTasks());
     }
 
@@ -184,9 +184,9 @@ class AppTest extends \PHPUnit\Framework\TestCase
     public function testFunctionFire()
     {
         /* test sequence of tasks based on event and index */
-        $this->app->registerTask(SampleTaskHandlesEventWithHighIndex::class);
-        $this->app->registerTask(SampleTaskHandlesEventWithLowIndex::class);
-        $this->app->registerTask(SampleTaskHandlesEvent::class);
+        $this->app->setTask(SampleTaskHandlesEventWithHighIndex::class);
+        $this->app->setTask(SampleTaskHandlesEventWithLowIndex::class);
+        $this->app->setTask(SampleTaskHandlesEvent::class);
         $data = $this->app->fire('something-happened', ['key' => '(fired)']);
         $this->assertSame(['key' => '(fired) low on high'], $data);
     }
@@ -195,9 +195,9 @@ class AppTest extends \PHPUnit\Framework\TestCase
     public function testFunctionRunTask()
     {
         $this->expectException(CircularDependencyException::class);
-        $this->app->registerTask(TaskAFollowsTaskC::class);
-        $this->app->registerTask(TaskBFollowsTaskA::class);
-        $this->app->registerTask(TaskCFollowsTaskB::class);
+        $this->app->setTask(TaskAFollowsTaskC::class);
+        $this->app->setTask(TaskBFollowsTaskA::class);
+        $this->app->setTask(TaskCFollowsTaskB::class);
         $this->app->runTask(TaskAFollowsTaskC::class);
     }
 
@@ -251,9 +251,9 @@ class AppTest extends \PHPUnit\Framework\TestCase
     /* test it can flush all modules, tasks, services and instance stack of the application */
     public function testFunctionFlush()
     {
-        $this->app->registerModule(SampleModule::class);
-        $this->app->registerTask(SampleTask::class);
-        $this->app->registerService('name', 'Amit Sidhpura');
+        $this->app->setModule(SampleModule::class);
+        $this->app->setTask(SampleTask::class);
+        $this->app->setService('name', 'Amit Sidhpura');
         $this->app->isEntryCircularDependent('sample-stack', 'sample-entry');
         $this->assertSame(['sample-module' => SampleModule::class], $this->app->getModules());
         $this->assertSame(['sample-task' => SampleTask::class], $this->app->getTasks());
@@ -386,9 +386,9 @@ class AppTest extends \PHPUnit\Framework\TestCase
     /* test it can allow run task before and after particular task */
     public function testExtraRunTaskBeforeAndAfterParticularTask()
     {
-        $this->app->registerTask(SampleTaskHandlesAfterTaskRunEvent::class);
-        $this->app->registerTask(SampleTaskHandlesBeforeTaskRunEvent::class);
-        $this->app->registerTask(SampleTaskHandlesEvent::class);
+        $this->app->setTask(SampleTaskHandlesAfterTaskRunEvent::class);
+        $this->app->setTask(SampleTaskHandlesBeforeTaskRunEvent::class);
+        $this->app->setTask(SampleTaskHandlesEvent::class);
         $data = $this->app->fire('something-happened', ['key' => '(fired)']);
         $this->assertSame(['key' => '(fired) before on after'], $data);
     }
@@ -396,10 +396,10 @@ class AppTest extends \PHPUnit\Framework\TestCase
     /* test it can allow to replace particular task and also to retain replaced task dependencies */
     public function testExtraReplaceParticularTask()
     {
-        $this->app->registerTask(SampleTaskHandlesAfterTaskRunEvent::class);
-        $this->app->registerTask(SampleTaskHandlesBeforeTaskRunEvent::class);
-        $this->app->registerTask(SampleTaskHandlesEvent::class);
-        $this->app->registerTask(SampleTaskHandlesReplaceTaskEvent::class);
+        $this->app->setTask(SampleTaskHandlesAfterTaskRunEvent::class);
+        $this->app->setTask(SampleTaskHandlesBeforeTaskRunEvent::class);
+        $this->app->setTask(SampleTaskHandlesEvent::class);
+        $this->app->setTask(SampleTaskHandlesReplaceTaskEvent::class);
         $data = $this->app->fire('something-happened', ['key' => '(fired)']);
         $this->assertSame(['key' => '(fired) before on replaced after'], $data);
     }
