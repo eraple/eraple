@@ -19,8 +19,8 @@ use Eraple\Test\Data\Stub\NotExtendedAbstractTask;
 use Eraple\Test\Data\Stub\SampleServiceInterface;
 use Eraple\Test\Data\Stub\SampleService;
 use Eraple\Test\Data\Stub\SampleServiceHasParameters;
-use Eraple\Test\Data\Stub\SampleServiceForPreferencesInterface;
-use Eraple\Test\Data\Stub\SampleServiceForPreferences;
+use Eraple\Test\Data\Stub\SampleServiceForServicesArgumentInterface;
+use Eraple\Test\Data\Stub\SampleServiceForServicesArgument;
 use Eraple\Test\Data\Stub\ServiceANeedsServiceB;
 use Eraple\Test\Data\Stub\ServiceBNeedsServiceC;
 use Eraple\Test\Data\Stub\ServiceCNeedsServiceA;
@@ -205,7 +205,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
     public function testFunctionRunMethod()
     {
         $this->assertInstanceOf(SampleService::class, $this->app->runMethod(SampleService::class));
-        $preferences = [SampleServiceForPreferencesInterface::class => SampleServiceForPreferences::class];
+        $preferences = [SampleServiceForServicesArgumentInterface::class => SampleServiceForServicesArgument::class];
         $parameters = ['name' => 'Amit Sidhpura'];
         $sampleService = $this->app->runMethod(SampleServiceHasParameters::class, '__construct', $preferences, $parameters);
         $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
@@ -479,16 +479,16 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $sampleService2 = $this->app->get(SampleService::class);
         $this->assertSame($sampleService1, $sampleService2);
 
-        /* id is class and entry has preferences and parameters */
+        /* id is class and entry has services and parameters */
         $classConfiguration = [
-            'preferences' => [SampleServiceForPreferencesInterface::class => SampleServiceForPreferences::class],
-            'parameters'  => ['name' => 'Amit Sidhpura']
+            'services'   => [SampleServiceForServicesArgumentInterface::class => SampleServiceForServicesArgument::class],
+            'parameters' => ['name' => 'Amit Sidhpura']
         ];
         $this->app->set(SampleServiceHasParameters::class, $classConfiguration);
         $sampleService = $this->app->get(SampleServiceHasParameters::class);
         $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
         $this->assertSame('Amit Sidhpura', $sampleService->name);
-        $this->assertInstanceOf(SampleServiceForPreferences::class, $sampleService->sampleServiceForPreferences);
+        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleService->sampleServiceForPreferences);
     }
 
     /* test it can get instance of existing interface */
@@ -510,17 +510,17 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $sampleService2 = $this->app->get(SampleServiceInterface::class);
         $this->assertSame($sampleService1, $sampleService2);
 
-        /* id is interface and entry has preferences and parameters */
+        /* id is interface and entry has services and parameters */
         $interfaceConfiguration = [
-            'class'       => SampleServiceHasParameters::class,
-            'preferences' => [SampleServiceForPreferencesInterface::class => SampleServiceForPreferences::class],
-            'parameters'  => ['name' => 'Amit Sidhpura']
+            'class'      => SampleServiceHasParameters::class,
+            'services'   => [SampleServiceForServicesArgumentInterface::class => SampleServiceForServicesArgument::class],
+            'parameters' => ['name' => 'Amit Sidhpura']
         ];
         $this->app->set(SampleServiceInterface::class, $interfaceConfiguration);
         $sampleService = $this->app->get(SampleServiceInterface::class);
         $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
         $this->assertSame('Amit Sidhpura', $sampleService->name);
-        $this->assertInstanceOf(SampleServiceForPreferences::class, $sampleService->sampleServiceForPreferences);
+        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleService->sampleServiceForPreferences);
     }
 
     /* test it can get instance of existing entry alias */
@@ -545,30 +545,30 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->app->set('sample-service', ['typeOf' => SampleService::class]);
         $this->assertInstanceOf(SampleService::class, $this->app->get('sample-service'));
 
-        /* id is alias and entry is interface with preferences and parameters */
+        /* id is alias and entry is interface with services and parameters */
         $interfaceConfiguration = [
-            'typeOf'      => SampleServiceInterface::class,
-            'class'       => SampleServiceHasParameters::class,
-            'preferences' => [SampleServiceForPreferencesInterface::class => SampleServiceForPreferences::class],
-            'parameters'  => ['name' => 'Amit Sidhpura']
+            'typeOf'     => SampleServiceInterface::class,
+            'class'      => SampleServiceHasParameters::class,
+            'services'   => [SampleServiceForServicesArgumentInterface::class => SampleServiceForServicesArgument::class],
+            'parameters' => ['name' => 'Amit Sidhpura']
         ];
         $this->app->set('sample-service', $interfaceConfiguration);
         $sampleService = $this->app->get('sample-service');
         $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
         $this->assertSame('Amit Sidhpura', $sampleService->name);
-        $this->assertInstanceOf(SampleServiceForPreferences::class, $sampleService->sampleServiceForPreferences);
+        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleService->sampleServiceForPreferences);
 
-        /* id is alias and entry is class with preferences and parameters */
+        /* id is alias and entry is class with services and parameters */
         $classConfiguration = [
-            'typeOf'      => SampleServiceHasParameters::class,
-            'preferences' => [SampleServiceForPreferencesInterface::class => SampleServiceForPreferences::class],
-            'parameters'  => ['name' => 'Dipali Sidhpura']
+            'typeOf'     => SampleServiceHasParameters::class,
+            'services'   => [SampleServiceForServicesArgumentInterface::class => SampleServiceForServicesArgument::class],
+            'parameters' => ['name' => 'Dipali Sidhpura']
         ];
         $this->app->set('sample-service', $classConfiguration);
         $sampleService = $this->app->get('sample-service');
         $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
         $this->assertSame('Dipali Sidhpura', $sampleService->name);
-        $this->assertInstanceOf(SampleServiceForPreferences::class, $sampleService->sampleServiceForPreferences);
+        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleService->sampleServiceForPreferences);
     }
 
     /* test it can get instance of entry get without setting service */
@@ -579,24 +579,24 @@ class AppTest extends \PHPUnit\Framework\TestCase
 
         /* class and configuration pair */
         $classConfiguration = [
-            'preferences' => [SampleServiceForPreferencesInterface::class => SampleServiceForPreferences::class],
-            'parameters'  => ['name' => 'Amit Sidhpura']
+            'services'   => [SampleServiceForServicesArgumentInterface::class => SampleServiceForServicesArgument::class],
+            'parameters' => ['name' => 'Amit Sidhpura']
         ];
         $sampleService = $this->app->get(SampleServiceHasParameters::class, $classConfiguration);
         $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
         $this->assertSame('Amit Sidhpura', $sampleService->name);
-        $this->assertInstanceOf(SampleServiceForPreferences::class, $sampleService->sampleServiceForPreferences);
+        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleService->sampleServiceForPreferences);
 
         /* interface and class pair */
         $interfaceConfiguration = [
-            'class'       => SampleServiceHasParameters::class,
-            'preferences' => [SampleServiceForPreferencesInterface::class => SampleServiceForPreferences::class],
-            'parameters'  => ['name' => 'Amit Sidhpura']
+            'class'      => SampleServiceHasParameters::class,
+            'services'   => [SampleServiceForServicesArgumentInterface::class => SampleServiceForServicesArgument::class],
+            'parameters' => ['name' => 'Amit Sidhpura']
         ];
         $sampleService = $this->app->get(SampleServiceInterface::class, $interfaceConfiguration);
         $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleService);
         $this->assertSame('Amit Sidhpura', $sampleService->name);
-        $this->assertInstanceOf(SampleServiceForPreferences::class, $sampleService->sampleServiceForPreferences);
+        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleService->sampleServiceForPreferences);
 
         /* alias and configuration pair */
         $this->app->set('name', 'Amit Sidhpura');

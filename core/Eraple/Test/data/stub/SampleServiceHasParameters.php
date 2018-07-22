@@ -8,7 +8,7 @@ class SampleServiceHasParameters implements SampleServiceInterface
 
     public $sampleServiceForPreferences;
 
-    public function __construct(string $name, SampleServiceForPreferencesInterface $sampleServiceForPreferences)
+    public function __construct(string $name, SampleServiceForServicesArgumentInterface $sampleServiceForPreferences)
     {
         $this->name = $name;
         $this->sampleServiceForPreferences = $sampleServiceForPreferences;

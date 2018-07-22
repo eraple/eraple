@@ -342,11 +342,11 @@ class App implements ContainerInterface
     protected function getEntryInstanceByIdClass(string $id, $entry)
     {
         if ($this->isServiceClassConfigPair($id, $entry)) {
+            $services = isset($entry['services']) ? $entry['services'] : [];
             $parameters = isset($entry['parameters']) ? $entry['parameters'] : [];
-            $preferences = isset($entry['preferences']) ? $entry['preferences'] : [];
 
             /* create class instance with parameters */
-            $instance = $this->runMethod($id, '__construct', $preferences, $parameters);
+            $instance = $this->runMethod($id, '__construct', $services, $parameters);
 
             /* save instance to services if singleton is true */
             $singleton = isset($entry['singleton']) ? $entry['singleton'] : false;
@@ -474,23 +474,23 @@ class App implements ContainerInterface
     }
 
     /**
-     * Run class method with preferences and parameters and return output.
+     * Run class method with services and parameters and return output.
      *
      * @param string $id Id of an entry
      * @param string $method Method to run
-     * @param  array $preferences Array that maps class or interface names to a service name
+     * @param  array $services Array that maps class or interface names to a service name
      * @param  array $parameters Array of parameters to pass to method
      *
      * @return null|mixed
      * @throws CircularDependencyException|NotFoundException|ContainerException|\ReflectionException
      */
-    public function runMethod(string $id, string $method = '__construct', array $preferences = [], array $parameters = [])
+    public function runMethod(string $id, string $method = '__construct', array $services = [], array $parameters = [])
     {
         /* if class does not exists return null */
         if (!class_exists($id)) return null;
 
         /* if reflection class of id is not set set it */
-        if (!isset($this->reflectionClasses[$id])) $this->reflectionClasses[$id] = new \ReflectionClass($id);
+        if (!key_exists($id, $this->reflectionClasses)) $this->reflectionClasses[$id] = new \ReflectionClass($id);
 
         /* check if method is constructor */
         $isMethodConstructor = strcmp($method, '__construct') === 0;
@@ -502,10 +502,11 @@ class App implements ContainerInterface
         $classParameters = $this->reflectionClasses[$id]->getMethod($method)->getParameters();
         foreach ($classParameters as $classParameter) {
             $classParameterName = $classParameter->getName();
-            if (isset($parameters[$classParameterName])) continue;
+            if (key_exists($classParameterName, $parameters)) continue;
             $classParameterType = $classParameter->getType()->getName();
-            $preference = isset($preferences[$classParameterType]) ? $preferences[$classParameterType] : $classParameterType;
-            $parameters[$classParameterName] = $this->get($preference);
+            if (key_exists($classParameterType, $services)) $parameter = $this->get($classParameterType, $services[$classParameterType]);
+            else $parameter = $this->get($classParameterType);
+            $parameters[$classParameterName] = $parameter;
         }
 
         /* arrange parameters in sequence method accepts */
