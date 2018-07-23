@@ -118,47 +118,43 @@ class AppTest extends \PHPUnit\Framework\TestCase
     /* test it can set entry */
     public function testFunctionSet()
     {
-        /* set name and value pair with invalid name */
-        $this->app->set('My Name', 'Amit Sidhpura');
-        $this->assertSame([], array_diff_key($this->app->getServices(), [App::class => '']));
-
-        /* set name and value pair with valid name */
+        /* set key-value pair */
         $this->app->set('name', 'Amit Sidhpura');
         $this->assertSame(['name' => ['instance' => 'Amit Sidhpura']], array_diff_key($this->app->getServices(), [App::class => '']));
 
-        /* set name and value pair in array with instance format */
+        /* set key-config pair */
         $this->app->flush();
         $this->app->set('name', ['instance' => 'Amit Sidhpura']);
         $this->assertSame(['name' => ['instance' => 'Amit Sidhpura']], $this->app->getServices());
 
-        /* set name and value pair with value as array */
+        /* set class-config pair */
         $this->app->flush();
-        $this->app->set('profile', ['first-name' => 'Amit', 'last-name' => 'Sidhpura']);
-        $this->assertSame(['profile' => ['instance' => ['first-name' => 'Amit', 'last-name' => 'Sidhpura']]], $this->app->getServices());
+        $this->app->set(SampleService::class, []);
+        $this->assertSame([SampleService::class => []], $this->app->getServices());
 
-        /* set class and instance pair */
+        /* set class-instance pair */
         $this->app->flush();
         $instance = new SampleService();
         $this->app->set(SampleService::class, $instance);
         $this->assertSame([SampleService::class => ['instance' => $instance]], $this->app->getServices());
 
-        /* set interface and class pair */
+        /* set interface-class pair */
         $this->app->flush();
         $this->app->set(SampleServiceInterface::class, SampleService::class);
         $this->assertSame([SampleServiceInterface::class => ['class' => SampleService::class]], $this->app->getServices());
 
-        /* set interface and class pair in array with class format */
+        /* set interface-config pair */
         $this->app->flush();
         $this->app->set(SampleServiceInterface::class, ['class' => SampleService::class]);
         $this->assertSame([SampleServiceInterface::class => ['class' => SampleService::class]], $this->app->getServices());
 
-        /* set interface abd object pair */
+        /* set interface-instance pair */
         $this->app->flush();
         $instance = new SampleService();
         $this->app->set(SampleServiceInterface::class, $instance);
         $this->assertSame([SampleServiceInterface::class => ['instance' => $instance]], $this->app->getServices());
 
-        /* set alias and config pair */
+        /* set alias-config pair */
         $this->app->flush();
         $this->app->set('name-alias', ['alias' => 'name']);
         $this->assertSame(['name-alias' => ['alias' => 'name']], $this->app->getServices());
@@ -506,8 +502,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
     public function testExtraThrowContainerException()
     {
         $this->expectException(ContainerException::class);
-        $this->app->set(SampleServiceInterface::class, '');
-        $this->app->get(SampleServiceInterface::class);
+        $this->app->get(SampleServiceInterface::class, '');
     }
 
     /* test it can get instance of entry not found but creatable */

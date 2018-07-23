@@ -70,6 +70,7 @@ class App implements ContainerInterface
      * Application constructor.
      *
      * @param string $rootPath Root path of the application
+     * @throws ContainerException
      */
     public function __construct(string $rootPath = null)
     {
@@ -83,6 +84,7 @@ class App implements ContainerInterface
      * @param string $rootPath Root path of the application
      *
      * @return App
+     * @throws ContainerException
      */
     public static function instance(string $rootPath = null)
     {
@@ -202,6 +204,7 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return $this
+     * @throws ContainerException
      */
     public function setService(string $id, $entry)
     {
@@ -215,13 +218,17 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return $this
+     * @throws ContainerException
      */
     public function set(string $id, $entry)
     {
         $entry = $this->prepareServiceEntry($id, $entry);
 
+        /* throw exception if entry not instantiable */
+        if (is_null($entry)) throw new ContainerException(sprintf('Service with id "%s" is invalid', $id));
+
         /* set service to the application */
-        if (!is_null($entry)) $this->services[$id] = $entry;
+        $this->services[$id] = $entry;
 
         return $this;
     }
@@ -242,19 +249,31 @@ class App implements ContainerInterface
         /* discard service with invalid name */
         if (!class_exists($id) && !interface_exists($id) && !$this->isNameValid($id)) return null;
 
-        /* process entry with id as key and entry as value */
+        /* prepare id as key and entry as value */
         if ($this->isServiceKeyValuePair($id, $entry)) return ['instance' => $entry];
 
-        /* process entry with id as class and entry as instance */
+        /* prepare id as key and entry as config */
+        if ($this->isServiceKeyConfigPair($id, $entry)) return $entry;
+
+        /* prepare id as class and entry as config */
+        if ($this->isServiceClassConfigPair($id, $entry)) return $entry;
+
+        /* prepare id as class and entry as instance */
         if ($this->isServiceClassInstancePair($id, $entry)) return ['instance' => $entry];
 
-        /* process entry with id as interface and entry as class */
+        /* prepare id as interface and entry as class */
         if ($this->isServiceInterfaceClassPair($id, $entry)) return ['class' => $entry];
 
-        /* process entry with id as interface and entry as instance */
+        /* prepare id as interface and entry as config */
+        if ($this->isServiceInterfaceConfigPair($id, $entry)) return $entry;
+
+        /* prepare id as interface and entry as instance */
         if ($this->isServiceInterfaceInstancePair($id, $entry)) return ['instance' => $entry];
 
-        return $entry;
+        /* prepare id as alias and entry as config */
+        if ($this->isServiceAliasConfigPair($id, $entry)) return $entry;
+
+        return null;
     }
 
     /**
@@ -290,7 +309,11 @@ class App implements ContainerInterface
         $this->isEntryCircularDependent('instance', $id);
 
         /* prepare service entry */
-        $entry = $this->prepareServiceEntry($id, $entry);
+        $preparedEntry = is_null($entry) ? null : $this->prepareServiceEntry($id, $entry);
+
+        /* if entry is not null and prepared entry is null */
+        if (!is_null($entry) && is_null($preparedEntry)) throw new ContainerException(sprintf('Service with id "%s" is invalid', $id));
+        $entry = $preparedEntry;
 
         /* entry not found and not instantiable */
         if (!$this->has($id) && is_null($entry)) throw new NotFoundException(sprintf('Id "%s" not found', $id));
@@ -319,7 +342,7 @@ class App implements ContainerInterface
         }
 
         /* throw exception if entry not instantiable */
-        throw new ContainerException(sprintf('Entry of id "%s" is invalid', $id));
+        throw new ContainerException(sprintf('Service with id "%s" is invalid', $id));
     }
 
     /**
@@ -343,9 +366,9 @@ class App implements ContainerInterface
                 $parameters = key_exists('parameters', $entry) ? $entry['parameters'] : [];
 
                 return $this->runMethod($id, $entry['instance'], $services, $parameters);
-            } else {
-                return $entry['instance'];
             }
+
+            return $entry['instance'];
         }
 
         return null;
