@@ -3,6 +3,10 @@
 namespace Eraple\Core\Test\Unit;
 
 use Eraple\Core\App;
+use Eraple\Core\Exception\InvalidModuleException;
+use Eraple\Core\Exception\InvalidTaskException;
+use Eraple\Core\Exception\InvalidServiceException;
+use Eraple\Core\Exception\InvalidEventException;
 use Eraple\Core\Exception\CircularDependencyException;
 use Eraple\Core\Exception\NotFoundException;
 use Eraple\Core\Exception\MissingParameterException;
@@ -94,8 +98,6 @@ class AppTest extends \PHPUnit\Framework\TestCase
     public function testFunctionSetModule()
     {
         $this->app->setModule(SampleModule::class);
-        $this->app->setModule(InvalidNameModule::class);
-        $this->app->setModule(NotExtendedAbstractModule::class);
         $this->assertSame(['sample-module' => SampleModule::class], $this->app->getModules());
     }
 
@@ -103,8 +105,6 @@ class AppTest extends \PHPUnit\Framework\TestCase
     public function testFunctionSetTask()
     {
         $this->app->setTask(SampleTask::class);
-        $this->app->setModule(InvalidNameTask::class);
-        $this->app->setModule(NotExtendedAbstractTask::class);
         $this->assertSame(['sample-task' => SampleTask::class], $this->app->getTasks());
     }
 
@@ -501,7 +501,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
     /* test it can throw container exception when entry found but not instantiable */
     public function testExtraThrowContainerException()
     {
-        $this->expectException(ContainerException::class);
+        $this->expectException(InvalidServiceException::class);
         $this->app->get(SampleServiceInterface::class, '');
     }
 

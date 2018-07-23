@@ -3,6 +3,10 @@
 namespace Eraple\Core;
 
 use Psr\Container\ContainerInterface;
+use Eraple\Core\Exception\InvalidModuleException;
+use Eraple\Core\Exception\InvalidTaskException;
+use Eraple\Core\Exception\InvalidServiceException;
+use Eraple\Core\Exception\InvalidEventException;
 use Eraple\Core\Exception\CircularDependencyException;
 use Eraple\Core\Exception\NotFoundException;
 use Eraple\Core\Exception\MissingParameterException;
@@ -70,7 +74,8 @@ class App implements ContainerInterface
      * Application constructor.
      *
      * @param string $rootPath Root path of the application
-     * @throws ContainerException
+     *
+     * @throws InvalidServiceException
      */
     public function __construct(string $rootPath = null)
     {
@@ -84,7 +89,8 @@ class App implements ContainerInterface
      * @param string $rootPath Root path of the application
      *
      * @return App
-     * @throws ContainerException
+     *
+     * @throws InvalidServiceException
      */
     public static function instance(string $rootPath = null)
     {
@@ -150,6 +156,7 @@ class App implements ContainerInterface
         foreach ($this->modules as $module) {
             $tasks = $module::getTasks();
 
+            /* set task only if it is valid task */
             foreach ($tasks as $task) {
                 $this->setTask($task);
             }
@@ -165,6 +172,7 @@ class App implements ContainerInterface
         foreach ($this->tasks as $task) {
             $services = $task::getServices();
 
+            /* set service only if it is valid service */
             foreach ($services as $serviceId => $service) {
                 $this->setService($serviceId, $service);
             }
@@ -175,11 +183,15 @@ class App implements ContainerInterface
      * Set a module to the application.
      *
      * @param string $class Module class
+     *
+     * @throws InvalidModuleException
      */
     public function setModule(string $class)
     {
         /* @var $class Module::class */
-        if (!is_subclass_of($class, Module::class) || !$this->isNameValid($class::getName())) return;
+        if (!is_subclass_of($class, Module::class) || !$this->isNameValid($class::getName())) throw new InvalidModuleException(sprintf(
+            'Module "%s" is invalid', $class
+        ));
 
         $this->modules[$class::getName()] = $class;
     }
@@ -188,11 +200,15 @@ class App implements ContainerInterface
      * Set a task with the application.
      *
      * @param string $class Task class
+     *
+     * @throws InvalidTaskException
      */
     public function setTask(string $class)
     {
         /* @var $class Task::class */
-        if (!is_subclass_of($class, Task::class) || !$this->isNameValid($class::getName())) return;
+        if (!is_subclass_of($class, Task::class) || !$this->isNameValid($class::getName())) throw new InvalidTaskException(sprintf(
+            'Task "%s" is invalid', $class
+        ));
 
         $this->tasks[$class::getName()] = $class;
     }
@@ -204,7 +220,8 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return $this
-     * @throws ContainerException
+     *
+     * @throws InvalidServiceException
      */
     public function setService(string $id, $entry)
     {
@@ -218,14 +235,15 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return $this
-     * @throws ContainerException
+     *
+     * @throws InvalidServiceException
      */
     public function set(string $id, $entry)
     {
         $entry = $this->prepareServiceEntry($id, $entry);
 
         /* throw exception if entry not instantiable */
-        if (is_null($entry)) throw new ContainerException(sprintf('Service with id "%s" is invalid', $id));
+        if (is_null($entry)) throw new InvalidServiceException(sprintf('Service with id "%s" is invalid', $id));
 
         /* set service to the application */
         $this->services[$id] = $entry;
@@ -239,7 +257,7 @@ class App implements ContainerInterface
      * @param string $id Id of an entry
      * @param  mixed $entry Entry of the application
      *
-     * @return array|null
+     * @return null|array
      */
     protected function prepareServiceEntry(string $id, $entry)
     {
@@ -297,6 +315,8 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return mixed
+     *
+     * @throws InvalidServiceException
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
@@ -312,11 +332,11 @@ class App implements ContainerInterface
         $preparedEntry = is_null($entry) ? null : $this->prepareServiceEntry($id, $entry);
 
         /* if entry is not null and prepared entry is null */
-        if (!is_null($entry) && is_null($preparedEntry)) throw new ContainerException(sprintf('Service with id "%s" is invalid', $id));
+        if (!is_null($entry) && is_null($preparedEntry)) throw new InvalidServiceException(sprintf('Service with id "%s" is invalid', $id));
         $entry = $preparedEntry;
 
         /* entry not found and not instantiable */
-        if (!$this->has($id) && is_null($entry)) throw new NotFoundException(sprintf('Id "%s" not found', $id));
+        if (!$this->has($id) && is_null($entry)) throw new NotFoundException(sprintf('Service with id "%s" not found', $id));
 
         /* entry not found but instantiable */
         if (!key_exists($id, $this->services) && is_null($entry)) {
@@ -352,6 +372,8 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return null|mixed
+     *
+     * @throws InvalidServiceException
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
@@ -381,6 +403,8 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return null|object
+     *
+     * @throws InvalidServiceException
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
@@ -413,6 +437,8 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return null|object
+     *
+     * @throws InvalidServiceException
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
@@ -447,6 +473,8 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return null|mixed
+     *
+     * @throws InvalidServiceException
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
@@ -472,17 +500,20 @@ class App implements ContainerInterface
      * @param string $event Name of the event
      * @param  array $data Data passed to the task
      *
-     * @return array|null|mixed
+     * @return null|array|mixed
+     *
+     * @throws InvalidServiceException
+     * @throws InvalidEventException
      * @throws CircularDependencyException
-     * @throws ContainerException
-     * @throws MissingParameterException
      * @throws NotFoundException
+     * @throws MissingParameterException
+     * @throws ContainerException
      * @throws \ReflectionException
      */
     public function fire(string $event, array $data = [])
     {
         /* return if event name is not valid */
-        if (!$this->isNameValid($event)) return $data;
+        if (!$this->isNameValid($event)) throw new InvalidEventException(sprintf('Event "%s" is invalid', $event));
 
         /* run tasks on event */
         foreach ($this->getTasks(['event' => $event], 'and', 'index') as $task) {
@@ -498,7 +529,10 @@ class App implements ContainerInterface
      * @param string $task Task to run
      * @param  array $data Data passed to the task
      *
-     * @return array|null|mixed
+     * @return null|array|mixed
+     *
+     * @throws InvalidServiceException
+     * @throws InvalidEventException
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
@@ -545,6 +579,8 @@ class App implements ContainerInterface
      * @param  array $parameters Array of parameters to pass to method
      *
      * @return null|mixed
+     *
+     * @throws InvalidServiceException
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException

@@ -4,6 +4,6 @@ namespace Eraple\Core\Exception;
 
 use Psr\Container\ContainerExceptionInterface;
 
-class CircularDependencyException extends \Exception implements ContainerExceptionInterface
+class InvalidEventException extends \Exception implements ContainerExceptionInterface
 {
 }
