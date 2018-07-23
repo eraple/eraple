@@ -148,8 +148,8 @@ class AppTest extends \PHPUnit\Framework\TestCase
 
         /* set alias and config pair */
         $this->app->flush();
-        $this->app->set('name-alias', ['typeOf' => 'name']);
-        $this->assertSame(['name-alias' => ['typeOf' => 'name']], $this->app->getServices());
+        $this->app->set('name-alias', ['alias' => 'name']);
+        $this->assertSame(['name-alias' => ['alias' => 'name']], $this->app->getServices());
     }
 
     /* test it can check entry exists */
@@ -339,7 +339,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertTrue($this->app->isServiceKeyValuePair('object', new \stdClass()));
         $this->assertFalse($this->app->isServiceKeyValuePair(SampleService::class, ''));
         $this->assertFalse($this->app->isServiceKeyValuePair(SampleServiceInterface::class, ''));
-        $this->assertFalse($this->app->isServiceKeyValuePair('alias', ['typeOf' => 'name']));
+        $this->assertFalse($this->app->isServiceKeyValuePair('alias', ['alias' => 'name']));
         $this->assertFalse($this->app->isServiceKeyValuePair('instance', ['instance' => 'Amit Sidhpura']));
     }
 
@@ -381,9 +381,9 @@ class AppTest extends \PHPUnit\Framework\TestCase
     /* test it can check whether service is alias-config pair */
     public function testFunctionIsServiceAliasConfigPair()
     {
-        $this->assertTrue($this->app->isServiceAliasConfigPair('name-alias', ['typeOf' => 'name']));
-        $this->assertFalse($this->app->isServiceAliasConfigPair(SampleService::class, ['typeOf' => 'name']));
-        $this->assertFalse($this->app->isServiceAliasConfigPair(SampleServiceInterface::class, ['typeOf' => 'name']));
+        $this->assertTrue($this->app->isServiceAliasConfigPair('name-alias', ['alias' => 'name']));
+        $this->assertFalse($this->app->isServiceAliasConfigPair(SampleService::class, ['alias' => 'name']));
+        $this->assertFalse($this->app->isServiceAliasConfigPair(SampleServiceInterface::class, ['alias' => 'name']));
         $this->assertFalse($this->app->isServiceAliasConfigPair('name-alias', ''));
         $this->assertFalse($this->app->isServiceAliasConfigPair('name-alias', []));
     }
@@ -459,8 +459,8 @@ class AppTest extends \PHPUnit\Framework\TestCase
     public function testExtraThrowCircularDependencyExceptionWhenAliasIsCircularDependent()
     {
         $this->expectException(CircularDependencyException::class);
-        $this->app->set('name-alias1', ['typeOf' => 'name-alias2']);
-        $this->app->set('name-alias2', ['typeOf' => 'name-alias1']);
+        $this->app->set('name-alias1', ['alias' => 'name-alias2']);
+        $this->app->set('name-alias2', ['alias' => 'name-alias1']);
         $this->app->get('name-alias1');
     }
 
@@ -562,26 +562,26 @@ class AppTest extends \PHPUnit\Framework\TestCase
     {
         /* id is alias and entry is value */
         $this->app->set('name', 'Amit Sidhpura');
-        $this->app->set('name-alias', ['typeOf' => 'name']);
+        $this->app->set('name-alias', ['alias' => 'name']);
         $this->assertSame('Amit Sidhpura', $this->app->get('name-alias'));
 
         /* id is alias and entry is alias */
-        $this->app->set('name-alias1', ['typeOf' => 'name']);
-        $this->app->set('name-alias2', ['typeOf' => 'name-alias1']);
+        $this->app->set('name-alias1', ['alias' => 'name']);
+        $this->app->set('name-alias2', ['alias' => 'name-alias1']);
         $this->assertSame('Amit Sidhpura', $this->app->get('name-alias2'));
 
         /* id is alias and entry is interface */
         $this->app->set(SampleServiceInterface::class, SampleService::class);
-        $this->app->set('sample-service-interface', ['typeOf' => SampleServiceInterface::class]);
+        $this->app->set('sample-service-interface', ['alias' => SampleServiceInterface::class]);
         $this->assertInstanceOf(SampleService::class, $this->app->get('sample-service-interface'));
 
         /* id is alias and entry is class */
-        $this->app->set('sample-service', ['typeOf' => SampleService::class]);
+        $this->app->set('sample-service', ['alias' => SampleService::class]);
         $this->assertInstanceOf(SampleService::class, $this->app->get('sample-service'));
 
         /* id is alias and entry is interface with services and parameters */
         $interfaceConfiguration = [
-            'typeOf'     => SampleServiceInterface::class,
+            'alias'     => SampleServiceInterface::class,
             'class'      => SampleServiceHasParameters::class,
             'services'   => [SampleServiceForServicesArgumentInterface::class => SampleServiceForServicesArgument::class],
             'parameters' => ['name' => 'Amit Sidhpura']
@@ -594,7 +594,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
 
         /* id is alias and entry is class with services and parameters */
         $classConfiguration = [
-            'typeOf'     => SampleServiceHasParameters::class,
+            'alias'     => SampleServiceHasParameters::class,
             'services'   => [SampleServiceForServicesArgumentInterface::class => SampleServiceForServicesArgument::class],
             'parameters' => ['name' => 'Dipali Sidhpura']
         ];
@@ -634,6 +634,6 @@ class AppTest extends \PHPUnit\Framework\TestCase
 
         /* alias and configuration pair */
         $this->app->set('name', 'Amit Sidhpura');
-        $this->assertSame('Amit Sidhpura', $this->app->get('name-alias', ['typeOf' => 'name']));
+        $this->assertSame('Amit Sidhpura', $this->app->get('name-alias', ['alias' => 'name']));
     }
 }

@@ -161,7 +161,7 @@ class App implements ContainerInterface
             $services = $task::getServices();
 
             foreach ($services as $serviceId => $service) {
-                $this->set($serviceId, $service);
+                $this->setService($serviceId, $service);
             }
         }
     }
@@ -400,8 +400,8 @@ class App implements ContainerInterface
     protected function getEntryInstanceByIdAlias(string $id, $entry)
     {
         if ($this->isServiceAliasConfigPair($id, $entry)) {
-            $id = $entry['typeOf'];
-            unset($entry['typeOf']);
+            $id = $entry['alias'];
+            unset($entry['alias']);
             $entry = count($entry) ? $entry : null;
 
             return $this->get($id, $entry);
@@ -676,7 +676,7 @@ class App implements ContainerInterface
     public function isServiceKeyValuePair(string $id, $entry)
     {
         if (!class_exists($id) && !interface_exists($id)
-            && (!is_array($entry) || (!key_exists('typeOf', $entry) && !key_exists('instance', $entry)))) {
+            && (!is_array($entry) || (!key_exists('alias', $entry) && !key_exists('instance', $entry)))) {
             return true;
         }
 
@@ -761,7 +761,7 @@ class App implements ContainerInterface
      */
     public function isServiceAliasConfigPair(string $id, $entry)
     {
-        if (!class_exists($id) && !interface_exists($id) && is_array($entry) && key_exists('typeOf', $entry)) {
+        if (!class_exists($id) && !interface_exists($id) && is_array($entry) && key_exists('alias', $entry)) {
             return true;
         }
 
