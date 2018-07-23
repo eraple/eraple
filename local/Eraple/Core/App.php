@@ -74,6 +74,7 @@ class App implements ContainerInterface
     public function __construct(string $rootPath = null)
     {
         $this->rootPath = $rootPath;
+        $this->set(App::class, $this);
     }
 
     /**
@@ -146,6 +147,7 @@ class App implements ContainerInterface
         /* set tasks */
         foreach ($this->modules as $module) {
             $tasks = $module::getTasks();
+
             foreach ($tasks as $task) {
                 $this->setTask($task);
             }
@@ -237,14 +239,20 @@ class App implements ContainerInterface
         /* check entry is null then return null */
         if (is_null($entry)) return null;
 
-        /* discard entry with invalid name */
+        /* discard service with invalid name */
         if (!class_exists($id) && !interface_exists($id) && !$this->isNameValid($id)) return null;
 
         /* process entry with id as key and entry as value */
-        if ($this->isServiceKeyValuePair($id, $entry)) $entry = ['instance' => $entry];
+        if ($this->isServiceKeyValuePair($id, $entry)) return ['instance' => $entry];
+
+        /* process entry with id as class and entry as instance */
+        if ($this->isServiceClassInstancePair($id, $entry)) return ['instance' => $entry];
 
         /* process entry with id as interface and entry as class */
-        if ($this->isServiceInterfaceClassPair($id, $entry)) $entry = ['class' => $entry];
+        if ($this->isServiceInterfaceClassPair($id, $entry)) return ['class' => $entry];
+
+        /* process entry with id as interface and entry as instance */
+        if ($this->isServiceInterfaceInstancePair($id, $entry)) return ['instance' => $entry];
 
         return $entry;
     }
@@ -321,12 +329,20 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return null|mixed
+     * @throws CircularDependencyException
+     * @throws NotFoundException
+     * @throws MissingParameterException
+     * @throws ContainerException
+     * @throws \ReflectionException
      */
     protected function getEntryInstanceByIdKey(string $id, $entry)
     {
         if ($this->isServiceKeyConfigPair($id, $entry)) {
             if ($entry['instance'] instanceof \Closure) {
-                return $entry['instance']($this);
+                $services = isset($entry['services']) ? $entry['services'] : [];
+                $parameters = isset($entry['parameters']) ? $entry['parameters'] : [];
+
+                return $this->runMethod($id, $entry['instance'], $services, $parameters);
             } else {
                 return $entry['instance'];
             }
@@ -433,8 +449,12 @@ class App implements ContainerInterface
      * @param string $event Name of the event
      * @param  array $data Data passed to the task
      *
-     * @return array
+     * @return array|null|mixed
      * @throws CircularDependencyException
+     * @throws ContainerException
+     * @throws MissingParameterException
+     * @throws NotFoundException
+     * @throws \ReflectionException
      */
     public function fire(string $event, array $data = [])
     {
@@ -455,8 +475,12 @@ class App implements ContainerInterface
      * @param string $task Task to run
      * @param  array $data Data passed to the task
      *
-     * @return array
+     * @return array|null|mixed
      * @throws CircularDependencyException
+     * @throws NotFoundException
+     * @throws MissingParameterException
+     * @throws ContainerException
+     * @throws \ReflectionException
      */
     public function runTask(string $task, array $data = [])
     {
@@ -477,9 +501,7 @@ class App implements ContainerInterface
         $data = $this->fire('before-task-' . $task::getName(), $data);
 
         /* run task */
-        /* @var $taskInstance Task */
-        $taskInstance = new $task();
-        $returnData = $taskInstance->run($this, $data);
+        $returnData = $this->runMethod($task, 'run', [], ['data' => $data]);
         $data = is_array($returnData) ? $returnData : $data;
 
         /* run tasks after task */
@@ -750,6 +772,23 @@ class App implements ContainerInterface
     }
 
     /**
+     * Check if service is class-instance pair.
+     *
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
+     *
+     * @return bool
+     */
+    public function isServiceClassInstancePair(string $id, $entry)
+    {
+        if (class_exists($id) && is_object($entry) && $entry instanceof $id) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Check if service is interface-class pair.
      *
      * @param string $id Id of an entry
@@ -777,6 +816,23 @@ class App implements ContainerInterface
     public function isServiceInterfaceConfigPair(string $id, $entry)
     {
         if (interface_exists($id) && is_array($entry) && key_exists('class', $entry) && class_exists($entry['class'])) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if service is interface-instance pair.
+     *
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
+     *
+     * @return bool
+     */
+    public function isServiceInterfaceInstancePair(string $id, $entry)
+    {
+        if (interface_exists($id) && is_object($entry) && $entry instanceof $id) {
             return true;
         }
 
