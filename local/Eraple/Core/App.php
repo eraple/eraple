@@ -240,13 +240,13 @@ class App implements ContainerInterface
      */
     public function set(string $id, $entry)
     {
-        $entry = $this->prepareServiceEntry($id, $entry);
+        $preparedEntry = $this->prepareServiceEntry($id, $entry);
 
         /* throw exception if entry not instantiable */
-        if (is_null($entry)) throw new InvalidServiceException(sprintf('Service with id "%s" is invalid', $id));
+        if (is_null($preparedEntry)) throw new InvalidServiceException(sprintf('Service with id "%s" is invalid', $id));
 
         /* set service to the application */
-        $this->services[$id] = $entry;
+        $this->services[$id] = $preparedEntry;
 
         return $this;
     }
@@ -300,12 +300,27 @@ class App implements ContainerInterface
      * @param string $id Id of an entry
      *
      * @return bool
+     *
+     * @throws InvalidServiceException
+     * @throws InvalidEventException
+     * @throws CircularDependencyException
+     * @throws NotFoundException
+     * @throws MissingParameterException
+     * @throws ContainerException
+     * @throws \ReflectionException
      */
     public function has($id)
     {
-        if (key_exists($id, $this->services)) return true;
+        /* fire before has event */
+        extract($this->fire('before-has', ['id' => $id]));
 
-        return class_exists($id) && !interface_exists($id);
+        /* check has service */
+        $has = key_exists($id, $this->services) || (class_exists($id) && !interface_exists($id));
+
+        /* fire before has event */
+        extract($this->fire('after-has', ['id' => $id, 'has' => $has]));
+
+        return $has;
     }
 
     /**
@@ -317,6 +332,7 @@ class App implements ContainerInterface
      * @return mixed
      *
      * @throws InvalidServiceException
+     * @throws InvalidEventException
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
@@ -327,6 +343,9 @@ class App implements ContainerInterface
     {
         /* add stack entry */
         $this->isEntryCircularDependent('instance', $id);
+
+        /* fire before get event */
+        extract($this->fire('before-get', ['id' => $id, 'entry' => $entry]));
 
         /* prepare service entry */
         $preparedEntry = is_null($entry) ? null : $this->prepareServiceEntry($id, $entry);
@@ -344,6 +363,9 @@ class App implements ContainerInterface
             /* remove stack entry */
             array_pop($this->dependencyStack['instance']);
 
+            /* fire after get event */
+            extract($this->fire('after-get', ['id' => $id, 'entry' => $entry, 'instance' => $instance]));
+
             return $instance;
         }
 
@@ -356,6 +378,9 @@ class App implements ContainerInterface
             if (!is_null($instance)) {
                 /* remove stack entry */
                 array_pop($this->dependencyStack['instance']);
+
+                /* fire after get event */
+                extract($this->fire('after-get', ['id' => $id, 'entry' => $entry, 'instance' => $instance]));
 
                 return $instance;
             }
@@ -374,6 +399,7 @@ class App implements ContainerInterface
      * @return null|mixed
      *
      * @throws InvalidServiceException
+     * @throws InvalidEventException
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
@@ -405,6 +431,7 @@ class App implements ContainerInterface
      * @return null|object
      *
      * @throws InvalidServiceException
+     * @throws InvalidEventException
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
@@ -439,6 +466,7 @@ class App implements ContainerInterface
      * @return null|object
      *
      * @throws InvalidServiceException
+     * @throws InvalidEventException
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
@@ -475,6 +503,7 @@ class App implements ContainerInterface
      * @return null|mixed
      *
      * @throws InvalidServiceException
+     * @throws InvalidEventException
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
@@ -555,6 +584,7 @@ class App implements ContainerInterface
         }
 
         /* run tasks before task */
+        $data = $this->fire('before-task', $data);
         $data = $this->fire('before-task-' . $task::getName(), $data);
 
         /* run task */
@@ -562,6 +592,7 @@ class App implements ContainerInterface
         $data = is_array($returnData) ? $returnData : $data;
 
         /* run tasks after task */
+        $data = $this->fire('after-task', $data);
         $data = $this->fire('after-task-' . $task::getName(), $data);
 
         /* remove stack entry */
@@ -581,6 +612,7 @@ class App implements ContainerInterface
      * @return null|mixed
      *
      * @throws InvalidServiceException
+     * @throws InvalidEventException
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
@@ -614,12 +646,19 @@ class App implements ContainerInterface
         $classParameters = $reflectionMethod->getParameters();
         foreach ($classParameters as $classParameter) {
             $classParameterName = $classParameter->getName();
-            if (key_exists($classParameterName, $parameters)) continue;
             $classParameterType = $classParameter->getType();
+
+            /* if parameter is passed as argument */
+            if (key_exists($classParameterName, $parameters)) continue;
+
+            /* if parameter is not passed as argument and also parameter type is null */
             if (is_null($classParameterType)) throw new MissingParameterException(sprintf(
                 'Parameter "%s" of method %s in id %s is missing', $classParameterName, is_string($method) ? $method : 'closure', $id
             ));
+
             $classParameterType = $classParameter->getType()->getName();
+
+            /* if parameter can be resolved from container based on its type */
             try {
                 if (key_exists($classParameterType, $services)) $parameter = $this->get($classParameterType, $services[$classParameterType]);
                 else $parameter = $this->get($classParameterType);
@@ -628,6 +667,7 @@ class App implements ContainerInterface
                     'Parameter "%s" of method %s in id %s is missing', $classParameterName, is_string($method) ? $method : 'closure', $id
                 ));
             }
+
             $parameters[$classParameterName] = $parameter;
         }
 
