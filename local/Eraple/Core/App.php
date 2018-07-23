@@ -266,7 +266,7 @@ class App implements ContainerInterface
      */
     public function has($id)
     {
-        if (isset($this->services[$id])) return true;
+        if (key_exists($id, $this->services)) return true;
 
         return class_exists($id) && !interface_exists($id);
     }
@@ -296,7 +296,7 @@ class App implements ContainerInterface
         if (!$this->has($id) && is_null($entry)) throw new NotFoundException(sprintf('Id "%s" not found', $id));
 
         /* entry not found but instantiable */
-        if (!isset($this->services[$id]) && is_null($entry)) {
+        if (!key_exists($id, $this->services) && is_null($entry)) {
             $instance = $this->runMethod($id);
             /* remove stack entry */
             array_pop($this->dependencyStack['instance']);
@@ -307,7 +307,7 @@ class App implements ContainerInterface
         /* entry found and instantiable */
         $functions = ['getEntryInstanceByIdKey', 'getEntryInstanceByIdClass', 'getEntryInstanceByIdInterface', 'getEntryInstanceByIdAlias'];
         $entry = !is_null($entry) ? $entry : $this->services[$id];
-        $entry = is_array($entry) && isset($this->services[$id]) && is_array($this->services[$id]) ? array_merge($this->services[$id], $entry) : $entry;
+        $entry = is_array($entry) && key_exists($id, $this->services) && is_array($this->services[$id]) ? array_merge($this->services[$id], $entry) : $entry;
         foreach ($functions as $function) {
             $instance = $this->$function($id, $entry);
             if (!is_null($instance)) {
@@ -339,8 +339,8 @@ class App implements ContainerInterface
     {
         if ($this->isServiceKeyConfigPair($id, $entry)) {
             if ($entry['instance'] instanceof \Closure) {
-                $services = isset($entry['services']) ? $entry['services'] : [];
-                $parameters = isset($entry['parameters']) ? $entry['parameters'] : [];
+                $services = key_exists('services', $entry) ? $entry['services'] : [];
+                $parameters = key_exists('parameters', $entry) ? $entry['parameters'] : [];
 
                 return $this->runMethod($id, $entry['instance'], $services, $parameters);
             } else {
@@ -367,15 +367,15 @@ class App implements ContainerInterface
     protected function getEntryInstanceByIdClass(string $id, $entry)
     {
         if ($this->isServiceClassConfigPair($id, $entry)) {
-            $services = isset($entry['services']) ? $entry['services'] : [];
-            $parameters = isset($entry['parameters']) ? $entry['parameters'] : [];
+            $services = key_exists('services', $entry) ? $entry['services'] : [];
+            $parameters = key_exists('parameters', $entry) ? $entry['parameters'] : [];
 
             /* create class instance with parameters */
             $instance = $this->runMethod($id, '__construct', $services, $parameters);
 
             /* save instance to services if singleton is true */
-            $singleton = isset($entry['singleton']) ? $entry['singleton'] : false;
-            if (isset($this->services[$id]) && $singleton === true) $this->services[$id]['instance'] = $instance;
+            $singleton = key_exists('singleton', $entry) ? $entry['singleton'] : false;
+            if (key_exists($id, $this->services) && $singleton === true) $this->services[$id]['instance'] = $instance;
 
             return $instance;
         }
@@ -401,7 +401,7 @@ class App implements ContainerInterface
         if ($this->isServiceInterfaceConfigPair($id, $entry)) {
             $class = $entry['class'];
             unset($entry['class']);
-            $singleton = isset($entry['singleton']) ? $entry['singleton'] : false;
+            $singleton = key_exists('singleton', $entry) ? $entry['singleton'] : false;
             unset($entry['singleton']);
             $entry = count($entry) ? $entry : null;
 
@@ -409,7 +409,7 @@ class App implements ContainerInterface
             $instance = $this->get($class, $entry);
 
             /* save instance to services if singleton is true */
-            if (isset($this->services[$id]) && $singleton === true) $this->services[$id]['instance'] = $instance;
+            if (key_exists($id, $this->services) && $singleton === true) $this->services[$id]['instance'] = $instance;
 
             return $instance;
         }
@@ -621,8 +621,8 @@ class App implements ContainerInterface
         if (count($filterBy)) {
             $tasks = array_filter($tasks, function (string $task) use ($filterBy, $filterLogic) {
                 /* @var $task Task::class */
-                $areNamesEqual = isset($filterBy['name']) ? $task::getName() === $filterBy['name'] : $filterLogic === 'and';
-                $areEventsEqual = isset($filterBy['event']) ? $task::getEvent() === $filterBy['event'] : $filterLogic === 'and';
+                $areNamesEqual = key_exists('name', $filterBy) ? $task::getName() === $filterBy['name'] : $filterLogic === 'and';
+                $areEventsEqual = key_exists('event', $filterBy) ? $task::getEvent() === $filterBy['event'] : $filterLogic === 'and';
 
                 return $filterLogic === 'and' ? $areNamesEqual && $areEventsEqual : $areNamesEqual || $areEventsEqual;
             });
@@ -866,7 +866,7 @@ class App implements ContainerInterface
      */
     public function isEntryCircularDependent(string $stackId, string $entry)
     {
-        if (!isset($this->dependencyStack[$stackId])) $this->dependencyStack[$stackId] = [];
+        if (!key_exists($stackId, $this->dependencyStack)) $this->dependencyStack[$stackId] = [];
 
         if (in_array($entry, $this->dependencyStack[$stackId])) {
             throw new CircularDependencyException(
