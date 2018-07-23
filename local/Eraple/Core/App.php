@@ -5,6 +5,7 @@ namespace Eraple\Core;
 use Psr\Container\ContainerInterface;
 use Eraple\Core\Exception\CircularDependencyException;
 use Eraple\Core\Exception\NotFoundException;
+use Eraple\Core\Exception\MissingParameterException;
 use Eraple\Core\Exception\ContainerException;
 
 class App implements ContainerInterface
@@ -269,7 +270,11 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return mixed
-     * @throws CircularDependencyException|NotFoundException|ContainerException|\ReflectionException
+     * @throws CircularDependencyException
+     * @throws NotFoundException
+     * @throws MissingParameterException
+     * @throws ContainerException
+     * @throws \ReflectionException
      */
     public function get($id, $entry = null)
     {
@@ -280,7 +285,7 @@ class App implements ContainerInterface
         $entry = $this->prepareServiceEntry($id, $entry);
 
         /* entry not found and not instantiable */
-        if (!$this->has($id) && is_null($entry)) throw new NotFoundException('Id "' . $id . '" no found.');
+        if (!$this->has($id) && is_null($entry)) throw new NotFoundException(sprintf('Id "%s" not found', $id));
 
         /* entry not found but instantiable */
         if (!isset($this->services[$id]) && is_null($entry)) {
@@ -306,7 +311,7 @@ class App implements ContainerInterface
         }
 
         /* throw exception if entry not instantiable */
-        throw new ContainerException();
+        throw new ContainerException(sprintf('Entry of id "%s" is invalid', $id));
     }
 
     /**
@@ -337,7 +342,11 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return null|object
-     * @throws CircularDependencyException|NotFoundException|ContainerException|\ReflectionException
+     * @throws CircularDependencyException
+     * @throws NotFoundException
+     * @throws MissingParameterException
+     * @throws ContainerException
+     * @throws \ReflectionException
      */
     protected function getEntryInstanceByIdClass(string $id, $entry)
     {
@@ -365,7 +374,11 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return null|object
-     * @throws CircularDependencyException|NotFoundException|ContainerException|\ReflectionException
+     * @throws CircularDependencyException
+     * @throws NotFoundException
+     * @throws MissingParameterException
+     * @throws ContainerException
+     * @throws \ReflectionException
      */
     protected function getEntryInstanceByIdInterface(string $id, $entry)
     {
@@ -395,7 +408,11 @@ class App implements ContainerInterface
      * @param  mixed $entry Entry of the application
      *
      * @return null|mixed
-     * @throws CircularDependencyException|NotFoundException|ContainerException|\ReflectionException
+     * @throws CircularDependencyException
+     * @throws NotFoundException
+     * @throws MissingParameterException
+     * @throws ContainerException
+     * @throws \ReflectionException
      */
     protected function getEntryInstanceByIdAlias(string $id, $entry)
     {
@@ -449,10 +466,11 @@ class App implements ContainerInterface
         /* replace task */
         /* @var $task Task::class */
         if (count($replacementTasks = $this->getTasks(['event' => 'replace-task-' . $task::getName()], 'and', 'index'))) {
+            $data = $this->runTask(reset($replacementTasks), $data);
             /* remove stack entry */
             array_pop($this->dependencyStack['task']);
 
-            return $this->runTask(reset($replacementTasks), $data);
+            return $data;
         }
 
         /* run tasks before task */
@@ -482,7 +500,11 @@ class App implements ContainerInterface
      * @param  array $parameters Array of parameters to pass to method
      *
      * @return null|mixed
-     * @throws CircularDependencyException|NotFoundException|ContainerException|\ReflectionException
+     * @throws CircularDependencyException
+     * @throws NotFoundException
+     * @throws MissingParameterException
+     * @throws ContainerException
+     * @throws \ReflectionException
      */
     public function runMethod(string $id, $method = '__construct', array $services = [], array $parameters = [])
     {
@@ -512,9 +534,19 @@ class App implements ContainerInterface
         foreach ($classParameters as $classParameter) {
             $classParameterName = $classParameter->getName();
             if (key_exists($classParameterName, $parameters)) continue;
+            $classParameterType = $classParameter->getType();
+            if (is_null($classParameterType)) throw new MissingParameterException(sprintf(
+                'Parameter "%s" of method %s in id %s is missing', $classParameterName, is_string($method) ? $method : 'closure', $id
+            ));
             $classParameterType = $classParameter->getType()->getName();
-            if (key_exists($classParameterType, $services)) $parameter = $this->get($classParameterType, $services[$classParameterType]);
-            else $parameter = $this->get($classParameterType);
+            try {
+                if (key_exists($classParameterType, $services)) $parameter = $this->get($classParameterType, $services[$classParameterType]);
+                else $parameter = $this->get($classParameterType);
+            } catch (NotFoundException $notFoundException) {
+                throw new MissingParameterException(sprintf(
+                    'Parameter "%s" of method %s in id %s is missing', $classParameterName, is_string($method) ? $method : 'closure', $id
+                ));
+            }
             $parameters[$classParameterName] = $parameter;
         }
 
@@ -781,12 +813,9 @@ class App implements ContainerInterface
         if (!isset($this->dependencyStack[$stackId])) $this->dependencyStack[$stackId] = [];
 
         if (in_array($entry, $this->dependencyStack[$stackId])) {
-            throw new CircularDependencyException(sprintf(
-                'Circular dependency of stack "%s": %s -> %s',
-                $stackId,
-                implode(' -> ', $this->dependencyStack[$stackId]),
-                $entry
-            ));
+            throw new CircularDependencyException(
+                sprintf('Circular dependency in stack "%s": %s -> %s', $stackId, implode(' -> ', $this->dependencyStack[$stackId]), $entry)
+            );
         } else {
             $this->dependencyStack[$stackId][] = $entry;
         }

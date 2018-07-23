@@ -5,6 +5,7 @@ namespace Eraple\Core\Test\Unit;
 use Eraple\Core\App;
 use Eraple\Core\Exception\CircularDependencyException;
 use Eraple\Core\Exception\NotFoundException;
+use Eraple\Core\Exception\MissingParameterException;
 use Eraple\Core\Exception\ContainerException;
 use Eraple\Core\Test\Unit\Data\App\Local\Eraple\Base\Module;
 use Eraple\Core\Test\Unit\Data\App\Local\Eraple\Base\Task\TaskOne;
@@ -24,7 +25,6 @@ use Eraple\Core\Test\Unit\Data\Stub\SampleServiceForServicesArgument;
 use Eraple\Core\Test\Unit\Data\Stub\ServiceANeedsServiceB;
 use Eraple\Core\Test\Unit\Data\Stub\ServiceBNeedsServiceC;
 use Eraple\Core\Test\Unit\Data\Stub\ServiceCNeedsServiceA;
-use Eraple\Core\Test\Unit\Data\Stub\ServiceParameterCouldNotBeResolved;
 use Eraple\Core\Test\Unit\Data\Stub\SampleTaskHandlesEvent;
 use Eraple\Core\Test\Unit\Data\Stub\SampleTaskHandlesEventWithLowIndex;
 use Eraple\Core\Test\Unit\Data\Stub\SampleTaskHandlesEventWithHighIndex;
@@ -243,6 +243,11 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $return = $this->app->runMethod(SampleServiceHasParameters::class, 'methodHasParameters', $services, $parameters);
         $this->assertSame('Amit Sidhpura', $return['name']);
         $this->assertInstanceOf(SampleServiceForServicesArgument::class, $return['sampleServiceForServicesArgument']);
+
+        /* throws parameter not found exception */
+        $this->expectException(MissingParameterException::class);
+        $parameters = [];
+        $this->app->runMethod(SampleServiceHasParameters::class, 'methodHasParameters', $services, $parameters);
     }
 
     /* test it can get reflection classes */
@@ -581,7 +586,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
 
         /* id is alias and entry is interface with services and parameters */
         $interfaceConfiguration = [
-            'alias'     => SampleServiceInterface::class,
+            'alias'      => SampleServiceInterface::class,
             'class'      => SampleServiceHasParameters::class,
             'services'   => [SampleServiceForServicesArgumentInterface::class => SampleServiceForServicesArgument::class],
             'parameters' => ['name' => 'Amit Sidhpura']
@@ -594,7 +599,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
 
         /* id is alias and entry is class with services and parameters */
         $classConfiguration = [
-            'alias'     => SampleServiceHasParameters::class,
+            'alias'      => SampleServiceHasParameters::class,
             'services'   => [SampleServiceForServicesArgumentInterface::class => SampleServiceForServicesArgument::class],
             'parameters' => ['name' => 'Dipali Sidhpura']
         ];
