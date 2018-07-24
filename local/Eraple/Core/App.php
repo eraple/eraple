@@ -128,9 +128,9 @@ class App implements ContainerInterface
      */
     public function run()
     {
-        $this->setModules();
-        $this->setTasks();
-        $this->setServices();
+        $this->collectModules();
+        $this->collectTasks();
+        $this->collectServices();
         $this->fire('before-start');
         $this->fire('start');
         $this->fire('after-start');
@@ -142,7 +142,7 @@ class App implements ContainerInterface
     /**
      * Set modules in local and vendor paths.
      */
-    protected function setModules()
+    protected function collectModules()
     {
         /* collect local and vendor modules */
         $localModules = glob($this->getLocalPath() . '*' . DIRECTORY_SEPARATOR . '*');
@@ -162,7 +162,7 @@ class App implements ContainerInterface
     /**
      * Set module tasks.
      */
-    protected function setTasks()
+    protected function collectTasks()
     {
         /* set tasks */
         foreach ($this->modules as $module) {
@@ -178,7 +178,7 @@ class App implements ContainerInterface
     /**
      * Set services.
      */
-    protected function setServices()
+    protected function collectServices()
     {
         /* set services */
         foreach ($this->tasks as $task) {
