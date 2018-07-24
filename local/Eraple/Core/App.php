@@ -76,6 +76,12 @@ class App implements ContainerInterface
      * @param string $rootPath Root path of the application
      *
      * @throws InvalidServiceException
+     * @throws InvalidEventException
+     * @throws CircularDependencyException
+     * @throws NotFoundException
+     * @throws MissingParameterException
+     * @throws ContainerException
+     * @throws \ReflectionException
      */
     public function __construct(string $rootPath = null)
     {
@@ -91,6 +97,12 @@ class App implements ContainerInterface
      * @return App
      *
      * @throws InvalidServiceException
+     * @throws InvalidEventException
+     * @throws CircularDependencyException
+     * @throws NotFoundException
+     * @throws MissingParameterException
+     * @throws ContainerException
+     * @throws \ReflectionException
      */
     public static function instance(string $rootPath = null)
     {
@@ -222,6 +234,12 @@ class App implements ContainerInterface
      * @return $this
      *
      * @throws InvalidServiceException
+     * @throws InvalidEventException
+     * @throws CircularDependencyException
+     * @throws NotFoundException
+     * @throws MissingParameterException
+     * @throws ContainerException
+     * @throws \ReflectionException
      */
     public function setService(string $id, $entry)
     {
@@ -237,72 +255,45 @@ class App implements ContainerInterface
      * @return $this
      *
      * @throws InvalidServiceException
+     * @throws InvalidEventException
+     * @throws CircularDependencyException
+     * @throws NotFoundException
+     * @throws MissingParameterException
+     * @throws ContainerException
+     * @throws \ReflectionException
      */
     public function set(string $id, $entry)
     {
-        $preparedEntry = $this->prepareServiceEntry($id, $entry);
+        /* fire some event here */
+        extract($this->fire('some-event', ['id' => $id, 'entry' => $entry]));
 
-        /* throw exception if entry not instantiable */
-        if (is_null($preparedEntry)) throw new InvalidServiceException(sprintf('Service with id "%s" is invalid', $id));
+        /* check whether service is valid */
+        $valid = false;
+        foreach (['KeyValue', 'KeyConfig', 'ClassInstance', 'ClassConfig', 'InterfaceInstance', 'InterfaceClass', 'InterfaceConfig', 'AliasConfig'] as $serviceType) {
+            if ($this->{'is' . $serviceType . 'Pair'}($id, $entry)) {
+                $valid = true;
+                break;
+            }
+        }
+
+        /* throw exception if entry not valid */
+        if (!$valid) throw new InvalidServiceException(sprintf('Service with id "%s" is invalid', $id));
 
         /* set service to the application */
-        $this->services[$id] = $preparedEntry;
+        $this->services[$id] = $entry;
 
         return $this;
     }
 
     /**
-     * Prepare service before setting it to the application.
-     *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
-     *
-     * @return null|array
-     */
-    protected function prepareServiceEntry(string $id, $entry)
-    {
-        /* check entry is null then return null */
-        if (is_null($entry)) return null;
-
-        /* discard service with invalid name */
-        if (!class_exists($id) && !interface_exists($id) && !$this->isNameValid($id)) return null;
-
-        /* prepare id as key and entry as value */
-        if ($this->isServiceKeyValuePair($id, $entry)) return ['instance' => $entry];
-
-        /* prepare id as key and entry as config */
-        if ($this->isServiceKeyConfigPair($id, $entry)) return $entry;
-
-        /* prepare id as class and entry as config */
-        if ($this->isServiceClassConfigPair($id, $entry)) return $entry;
-
-        /* prepare id as class and entry as instance */
-        if ($this->isServiceClassInstancePair($id, $entry)) return ['instance' => $entry];
-
-        /* prepare id as interface and entry as class */
-        if ($this->isServiceInterfaceClassPair($id, $entry)) return ['class' => $entry];
-
-        /* prepare id as interface and entry as config */
-        if ($this->isServiceInterfaceConfigPair($id, $entry)) return $entry;
-
-        /* prepare id as interface and entry as instance */
-        if ($this->isServiceInterfaceInstancePair($id, $entry)) return ['instance' => $entry];
-
-        /* prepare id as alias and entry as config */
-        if ($this->isServiceAliasConfigPair($id, $entry)) return $entry;
-
-        return null;
-    }
-
-    /**
-     * Check if service is key-value pair.
+     * Check is service key-value pair.
      *
      * @param string $id Id of an entry
      * @param  mixed $entry Entry of the application
      *
      * @return bool
      */
-    protected function isServiceKeyValuePair(string $id, $entry)
+    protected function isKeyValuePair(string $id, $entry)
     {
         if (!class_exists($id) && !interface_exists($id)
             && (!is_array($entry) || (!key_exists('alias', $entry) && !key_exists('instance', $entry)))) {
@@ -313,14 +304,14 @@ class App implements ContainerInterface
     }
 
     /**
-     * Check if service is key-config pair.
+     * Check is service key-config pair.
      *
      * @param string $id Id of an entry
      * @param  mixed $entry Entry of the application
      *
      * @return bool
      */
-    protected function isServiceKeyConfigPair(string $id, $entry)
+    protected function isKeyConfigPair(string $id, $entry)
     {
         if (is_string($id) && is_array($entry) && key_exists('instance', $entry)) {
             return true;
@@ -330,31 +321,14 @@ class App implements ContainerInterface
     }
 
     /**
-     * Check if service is class-config pair.
+     * Check is service class-instance pair.
      *
      * @param string $id Id of an entry
      * @param  mixed $entry Entry of the application
      *
      * @return bool
      */
-    protected function isServiceClassConfigPair(string $id, $entry)
-    {
-        if (class_exists($id) && is_array($entry)) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Check if service is class-instance pair.
-     *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
-     *
-     * @return bool
-     */
-    protected function isServiceClassInstancePair(string $id, $entry)
+    protected function isClassInstancePair(string $id, $entry)
     {
         if (class_exists($id) && is_object($entry) && $entry instanceof $id) {
             return true;
@@ -364,16 +338,16 @@ class App implements ContainerInterface
     }
 
     /**
-     * Check if service is interface-class pair.
+     * Check is service class-config pair.
      *
      * @param string $id Id of an entry
      * @param  mixed $entry Entry of the application
      *
      * @return bool
      */
-    protected function isServiceInterfaceClassPair(string $id, $entry)
+    protected function isClassConfigPair(string $id, $entry)
     {
-        if (interface_exists($id) && is_string($entry) && class_exists($entry)) {
+        if (class_exists($id) && (is_array($entry) || is_null($entry))) {
             return true;
         }
 
@@ -381,31 +355,14 @@ class App implements ContainerInterface
     }
 
     /**
-     * Check if service is interface-config pair.
+     * Check is service interface-instance pair.
      *
      * @param string $id Id of an entry
      * @param  mixed $entry Entry of the application
      *
      * @return bool
      */
-    protected function isServiceInterfaceConfigPair(string $id, $entry)
-    {
-        if (interface_exists($id) && is_array($entry) && key_exists('class', $entry) && class_exists($entry['class'])) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Check if service is interface-instance pair.
-     *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
-     *
-     * @return bool
-     */
-    protected function isServiceInterfaceInstancePair(string $id, $entry)
+    protected function isInterfaceInstancePair(string $id, $entry)
     {
         if (interface_exists($id) && is_object($entry) && $entry instanceof $id) {
             return true;
@@ -415,14 +372,48 @@ class App implements ContainerInterface
     }
 
     /**
-     * Check if service is alias-config pair.
+     * Check is service interface-class pair.
      *
      * @param string $id Id of an entry
      * @param  mixed $entry Entry of the application
      *
      * @return bool
      */
-    protected function isServiceAliasConfigPair(string $id, $entry)
+    protected function isInterfaceClassPair(string $id, $entry)
+    {
+        if (interface_exists($id) && is_string($entry) && class_exists($entry)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check is service interface-config pair.
+     *
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
+     *
+     * @return bool
+     */
+    protected function isInterfaceConfigPair(string $id, $entry)
+    {
+        if (interface_exists($id) && is_array($entry) && key_exists('class', $entry) && class_exists($entry['class'])) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check is service alias-config pair.
+     *
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
+     *
+     * @return bool
+     */
+    protected function isAliasConfigPair(string $id, $entry)
     {
         if (!class_exists($id) && !interface_exists($id) && is_array($entry) && key_exists('alias', $entry)) {
             return true;
@@ -432,7 +423,7 @@ class App implements ContainerInterface
     }
 
     /**
-     * Check whether an entry exists in the application.
+     * Check whether service is set to the application.
      *
      * @param string $id Id of an entry
      *
@@ -448,14 +439,11 @@ class App implements ContainerInterface
      */
     public function has($id)
     {
-        /* fire before has event */
-        extract($this->fire('before-has', ['id' => $id]));
+        /* fire some event here */
+        extract($this->fire('some-event', ['id' => $id]));
 
         /* check has service */
         $has = key_exists($id, $this->services) || (class_exists($id) && !interface_exists($id));
-
-        /* fire before has event */
-        extract($this->fire('after-has', ['id' => $id, 'has' => $has]));
 
         return $has;
     }
@@ -481,59 +469,42 @@ class App implements ContainerInterface
         /* add stack entry */
         $this->isEntryCircularDependent('instance', $id);
 
-        /* fire before get event */
-        extract($this->fire('before-get', ['id' => $id, 'entry' => $entry]));
-
-        /* prepare service entry */
-        $preparedEntry = is_null($entry) ? null : $this->prepareServiceEntry($id, $entry);
-
-        /* if entry is not null and prepared entry is null */
-        if (!is_null($entry) && is_null($preparedEntry)) throw new InvalidServiceException(sprintf('Service with id "%s" is invalid', $id));
-        $entry = $preparedEntry;
+        /* fire some event here */
+        extract($this->fire('some-event', ['id' => $id, 'entry' => $entry]));
 
         /* entry not found and not instantiable */
         if (!$this->has($id) && is_null($entry)) throw new NotFoundException(sprintf('Service with id "%s" not found', $id));
 
-        /* entry not found but instantiable */
-        if (!key_exists($id, $this->services) && is_null($entry)) {
-            $instance = $this->runMethod($id);
-            /* remove stack entry */
-            array_pop($this->dependencyStack['instance']);
+        /* overwrite set entry with arg entry */
+        $override = !is_null($entry) && key_exists($id, $this->services);
+        if ($override && is_array($entry) && is_array($this->services[$id])) $entry = array_merge($this->services[$id], $entry);
+        elseif (!$override && key_exists($id, $this->services)) $entry = $this->services[$id];
 
-            /* fire after get event */
-            extract($this->fire('after-get', ['id' => $id, 'entry' => $entry, 'instance' => $instance]));
-
-            return $instance;
-        }
-
-        /* entry found and instantiable */
-        $functions = ['getEntryInstanceByIdKey', 'getEntryInstanceByIdClass', 'getEntryInstanceByIdInterface', 'getEntryInstanceByIdAlias'];
-        $entry = !is_null($entry) ? $entry : $this->services[$id];
-        $entry = is_array($entry) && key_exists($id, $this->services) && is_array($this->services[$id]) ? array_merge($this->services[$id], $entry) : $entry;
-        foreach ($functions as $function) {
-            $instance = $this->$function($id, $entry);
-            if (!is_null($instance)) {
-                /* remove stack entry */
-                array_pop($this->dependencyStack['instance']);
-
-                /* fire after get event */
-                extract($this->fire('after-get', ['id' => $id, 'entry' => $entry, 'instance' => $instance]));
-
-                return $instance;
+        /* check whether service is valid */
+        $instance = null;
+        foreach (['KeyValue', 'KeyConfig', 'ClassInstance', 'ClassConfig', 'InterfaceInstance', 'InterfaceClass', 'InterfaceConfig', 'AliasConfig'] as $serviceType) {
+            if ($this->{'is' . $serviceType . 'Pair'}($id, $entry)) {
+                $instance = $this->{'getBy' . $serviceType . 'Pair'}($id, $entry);
+                break;
             }
         }
 
-        /* throw exception if entry not instantiable */
-        throw new ContainerException(sprintf('Service with id "%s" is invalid', $id));
+        /* if entry is not null and prepared entry is null */
+        if (is_null($instance)) throw new InvalidServiceException(sprintf('Service with id "%s" is invalid', $id));
+
+        /* remove stack entry */
+        array_pop($this->dependencyStack['instance']);
+
+        return $instance;
     }
 
     /**
-     * Get an entry instance of the application by its id key.
+     * Get an instance of key-value type service.
      *
      * @param string $id Id of an entry
      * @param  mixed $entry Entry of the application
      *
-     * @return null|mixed
+     * @return mixed
      *
      * @throws InvalidServiceException
      * @throws InvalidEventException
@@ -543,29 +514,22 @@ class App implements ContainerInterface
      * @throws ContainerException
      * @throws \ReflectionException
      */
-    protected function getEntryInstanceByIdKey(string $id, $entry)
+    protected function getByKeyValuePair(string $id, $entry)
     {
-        if ($this->isServiceKeyConfigPair($id, $entry)) {
-            if ($entry['instance'] instanceof \Closure) {
-                $services = key_exists('services', $entry) ? $entry['services'] : [];
-                $parameters = key_exists('parameters', $entry) ? $entry['parameters'] : [];
-
-                return $this->runMethod($id, $entry['instance'], $services, $parameters);
-            }
-
-            return $entry['instance'];
+        if ($entry instanceof \Closure) {
+            return $this->runMethod($id, $entry, [], []);
         }
 
-        return null;
+        return $entry;
     }
 
     /**
-     * Get an entry instance of the application by it id class.
+     * Get an instance of key-config type service.
      *
      * @param string $id Id of an entry
      * @param  mixed $entry Entry of the application
      *
-     * @return null|object
+     * @return mixed
      *
      * @throws InvalidServiceException
      * @throws InvalidEventException
@@ -575,32 +539,38 @@ class App implements ContainerInterface
      * @throws ContainerException
      * @throws \ReflectionException
      */
-    protected function getEntryInstanceByIdClass(string $id, $entry)
+    protected function getByKeyConfigPair(string $id, $entry)
     {
-        if ($this->isServiceClassConfigPair($id, $entry)) {
+        if ($entry['instance'] instanceof \Closure) {
             $services = key_exists('services', $entry) ? $entry['services'] : [];
             $parameters = key_exists('parameters', $entry) ? $entry['parameters'] : [];
 
-            /* create class instance with parameters */
-            $instance = $this->runMethod($id, '__construct', $services, $parameters);
-
-            /* save instance to services if singleton is true */
-            $singleton = key_exists('singleton', $entry) ? $entry['singleton'] : false;
-            if (key_exists($id, $this->services) && $singleton === true) $this->services[$id]['instance'] = $instance;
-
-            return $instance;
+            return $this->runMethod($id, $entry['instance'], $services, $parameters);
         }
 
-        return null;
+        return $entry['instance'];
     }
 
     /**
-     * Get an entry instance of the application by it id interface.
+     * Get an instance of class-instance type service.
      *
      * @param string $id Id of an entry
      * @param  mixed $entry Entry of the application
      *
-     * @return null|object
+     * @return mixed
+     */
+    protected function getByClassInstancePair(string $id, $entry)
+    {
+        return $entry;
+    }
+
+    /**
+     * Get an instance of class-config type service.
+     *
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
+     *
+     * @return mixed
      *
      * @throws InvalidServiceException
      * @throws InvalidEventException
@@ -610,34 +580,45 @@ class App implements ContainerInterface
      * @throws ContainerException
      * @throws \ReflectionException
      */
-    protected function getEntryInstanceByIdInterface(string $id, $entry)
+    protected function getByClassConfigPair(string $id, $entry)
     {
-        if ($this->isServiceInterfaceConfigPair($id, $entry)) {
-            $class = $entry['class'];
-            unset($entry['class']);
-            $singleton = key_exists('singleton', $entry) ? $entry['singleton'] : false;
-            unset($entry['singleton']);
-            $entry = count($entry) ? $entry : null;
+        /* if entry is null */
+        $entry = is_null($entry) ? [] : $entry;
 
-            /* create class instance with parameters */
-            $instance = $this->get($class, $entry);
+        /* prepare services and parameters */
+        $services = key_exists('services', $entry) ? $entry['services'] : [];
+        $parameters = key_exists('parameters', $entry) ? $entry['parameters'] : [];
 
-            /* save instance to services if singleton is true */
-            if (key_exists($id, $this->services) && $singleton === true) $this->services[$id]['instance'] = $instance;
+        /* create class instance with parameters */
+        $instance = $this->runMethod($id, '__construct', $services, $parameters);
 
-            return $instance;
-        }
+        /* save instance to services if singleton is true */
+        $singleton = key_exists('singleton', $entry) ? $entry['singleton'] : false;
+        if (key_exists($id, $this->services) && $singleton === true) $this->services[$id]['instance'] = $instance;
 
-        return null;
+        return $instance;
     }
 
     /**
-     * Get an entry instance of the application by it id alias.
+     * Get an instance of interface-instance type service.
      *
      * @param string $id Id of an entry
      * @param  mixed $entry Entry of the application
      *
-     * @return null|mixed
+     * @return mixed
+     */
+    protected function getByInterfaceInstancePair(string $id, $entry)
+    {
+        return $entry;
+    }
+
+    /**
+     * Get an instance of interface-class type service.
+     *
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
+     *
+     * @return mixed
      *
      * @throws InvalidServiceException
      * @throws InvalidEventException
@@ -647,17 +628,77 @@ class App implements ContainerInterface
      * @throws ContainerException
      * @throws \ReflectionException
      */
-    protected function getEntryInstanceByIdAlias(string $id, $entry)
+    protected function getByInterfaceClassPair(string $id, $entry)
     {
-        if ($this->isServiceAliasConfigPair($id, $entry)) {
-            $id = $entry['alias'];
-            unset($entry['alias']);
-            $entry = count($entry) ? $entry : null;
+        return $this->get($entry);
+    }
 
-            return $this->get($id, $entry);
-        }
+    /**
+     * Get an instance of interface-config type service.
+     *
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
+     *
+     * @return mixed
+     *
+     * @throws InvalidServiceException
+     * @throws InvalidEventException
+     * @throws CircularDependencyException
+     * @throws NotFoundException
+     * @throws MissingParameterException
+     * @throws ContainerException
+     * @throws \ReflectionException
+     */
+    protected function getByInterfaceConfigPair(string $id, $entry)
+    {
+        /* unset class and singleton keys */
+        $class = $entry['class'];
+        unset($entry['class']);
+        $singleton = key_exists('singleton', $entry) ? $entry['singleton'] : false;
+        unset($entry['singleton']);
+        $entry = count($entry) ? $entry : null;
 
-        return null;
+        /* create class instance with parameters */
+        $instance = $this->get($class, $entry);
+
+        /* save instance to services if singleton is true */
+        if (key_exists($id, $this->services) && $singleton === true) $this->services[$id]['instance'] = $instance;
+
+        return $instance;
+    }
+
+    /**
+     * Get an instance of alias-config type service.
+     *
+     * @param string $id Id of an entry
+     * @param  mixed $entry Entry of the application
+     *
+     * @return mixed
+     *
+     * @throws InvalidServiceException
+     * @throws InvalidEventException
+     * @throws CircularDependencyException
+     * @throws NotFoundException
+     * @throws MissingParameterException
+     * @throws ContainerException
+     * @throws \ReflectionException
+     */
+    protected function getByAliasConfigPair(string $id, $entry)
+    {
+        /* unset alias keys */
+        $class = $entry['alias'];
+        unset($entry['alias']);
+        $singleton = key_exists('singleton', $entry) ? $entry['singleton'] : false;
+        unset($entry['singleton']);
+        $entry = count($entry) ? $entry : null;
+
+        /* create class instance with parameters */
+        $instance = $this->get($class, $entry);
+
+        /* save instance to services if singleton is true */
+        if (key_exists($id, $this->services) && $singleton === true) $this->services[$id]['instance'] = $instance;
+
+        return $instance;
     }
 
     /**
@@ -666,7 +707,7 @@ class App implements ContainerInterface
      * @param string $event Name of the event
      * @param  array $data Data passed to the task
      *
-     * @return null|array|mixed
+     * @return array
      *
      * @throws InvalidServiceException
      * @throws InvalidEventException
@@ -695,7 +736,7 @@ class App implements ContainerInterface
      * @param string $task Task to run
      * @param  array $data Data passed to the task
      *
-     * @return null|array|mixed
+     * @return array
      *
      * @throws InvalidServiceException
      * @throws InvalidEventException
@@ -788,7 +829,7 @@ class App implements ContainerInterface
             /* if parameter is passed as argument */
             if (key_exists($classParameterName, $parameters)) continue;
 
-            /* if parameter is not passed as argument and also parameter type is null */
+            /* if parameter is not passed as argument and parameter type is null */
             if (is_null($classParameterType)) throw new MissingParameterException(sprintf(
                 'Parameter "%s" of method %s in id %s is missing', $classParameterName, is_string($method) ? $method : 'closure', $id
             ));
@@ -1000,5 +1041,17 @@ class App implements ContainerInterface
     public function uncamelize(string $string, string $delimiter = '-')
     {
         return strtolower(preg_replace('/([a-z])([A-Z])/', '\\1' . $delimiter . '\\2', $string));
+    }
+
+    /**
+     * Convert full class path to valid name.
+     *
+     * @param string $class
+     *
+     * @return string
+     */
+    public function classToName(string $class)
+    {
+        return strtolower(preg_replace('/[^a-zA-Z0-9-]+/', '-', $class));
     }
 }

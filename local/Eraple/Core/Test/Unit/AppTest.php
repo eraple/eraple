@@ -57,6 +57,9 @@ class AppTest extends \PHPUnit\Framework\TestCase
     /* test it can instantiate and set root path */
     public function testFunctionConstruct()
     {
+        /*$reflection = new \ReflectionClass(App::class);
+        $methods = array_map(function (\ReflectionMethod $method) { return $method->getName(); }, $reflection->getMethods());
+        echo implode(PHP_EOL, $methods);*/
         $app = new App('some_path_here');
         $this->assertSame('some_path_here' . DIRECTORY_SEPARATOR, $app->getRootPath());
     }
@@ -90,7 +93,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertSame(['task-one' => TaskOne::class], $this->app->getTasks(['event' => 'start']));
         $this->assertSame(['task-two' => TaskTwo::class], $this->app->getTasks(['event' => 'before-end']));
         $this->assertSame(['task-three' => TaskThree::class], $this->app->getTasks(['event' => 'end']));
-        $services = ['key-one' => ['instance' => 'value-one'], 'key-two' => ['instance' => 'value-two'], 'key-three' => ['instance' => 'value-three']];
+        $services = ['key-one' => 'value-one', 'key-two' => 'value-two', 'key-three' => 'value-three'];
         $this->assertSame($services, array_diff_key($this->app->getServices(), [App::class => '']));
     }
 
@@ -120,39 +123,39 @@ class AppTest extends \PHPUnit\Framework\TestCase
     {
         /* set key-value pair */
         $this->app->set('name', 'Amit Sidhpura');
-        $this->assertSame(['name' => ['instance' => 'Amit Sidhpura']], array_diff_key($this->app->getServices(), [App::class => '']));
+        $this->assertSame(['name' => 'Amit Sidhpura'], array_diff_key($this->app->getServices(), [App::class => '']));
 
         /* set key-config pair */
         $this->app->flush();
         $this->app->set('name', ['instance' => 'Amit Sidhpura']);
         $this->assertSame(['name' => ['instance' => 'Amit Sidhpura']], $this->app->getServices());
 
+        /* set class-instance pair */
+        $this->app->flush();
+        $instance = new SampleService();
+        $this->app->set(SampleService::class, $instance);
+        $this->assertSame([SampleService::class => $instance], $this->app->getServices());
+
         /* set class-config pair */
         $this->app->flush();
         $this->app->set(SampleService::class, []);
         $this->assertSame([SampleService::class => []], $this->app->getServices());
 
-        /* set class-instance pair */
+        /* set interface-instance pair */
         $this->app->flush();
         $instance = new SampleService();
-        $this->app->set(SampleService::class, $instance);
-        $this->assertSame([SampleService::class => ['instance' => $instance]], $this->app->getServices());
+        $this->app->set(SampleServiceInterface::class, $instance);
+        $this->assertSame([SampleServiceInterface::class => $instance], $this->app->getServices());
 
         /* set interface-class pair */
         $this->app->flush();
         $this->app->set(SampleServiceInterface::class, SampleService::class);
-        $this->assertSame([SampleServiceInterface::class => ['class' => SampleService::class]], $this->app->getServices());
+        $this->assertSame([SampleServiceInterface::class => SampleService::class], $this->app->getServices());
 
         /* set interface-config pair */
         $this->app->flush();
         $this->app->set(SampleServiceInterface::class, ['class' => SampleService::class]);
         $this->assertSame([SampleServiceInterface::class => ['class' => SampleService::class]], $this->app->getServices());
-
-        /* set interface-instance pair */
-        $this->app->flush();
-        $instance = new SampleService();
-        $this->app->set(SampleServiceInterface::class, $instance);
-        $this->assertSame([SampleServiceInterface::class => ['instance' => $instance]], $this->app->getServices());
 
         /* set alias-config pair */
         $this->app->flush();
@@ -304,7 +307,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->app->isEntryCircularDependent('sample-stack', 'sample-entry');
         $this->assertSame(['sample-module' => SampleModule::class], $this->app->getModules());
         $this->assertSame(['sample-task' => SampleTask::class], $this->app->getTasks());
-        $this->assertSame(['name' => ['instance' => 'Amit Sidhpura']], array_diff_key($this->app->getServices(), [App::class => '']));
+        $this->assertSame(['name' => 'Amit Sidhpura'], array_diff_key($this->app->getServices(), [App::class => '']));
         $this->assertSame(['sample-stack' => ['sample-entry']], $this->app->getDependencyStack());
         $this->app->flush();
         $this->assertSame([], $this->app->getModules());
@@ -370,6 +373,13 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertSame('task-one', $this->app->uncamelize('taskOne'));
         $this->assertSame('task_one', $this->app->uncamelize('taskOne', '_'));
         $this->assertSame('taskone', $this->app->uncamelize('taskone'));
+    }
+
+    /* test it can convert class path to valid name */
+    public function testFunctionClassToName()
+    {
+        $this->assertSame('eraple-core-test-unit-data-stub-sampleservice', $this->app->classToName(SampleService::class));
+        $this->assertSame('test-----testing', $this->app->classToName('test   --- testing'));
     }
 
     /* test it can allow run task before and after particular task */
@@ -447,6 +457,9 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->app->set('name', ['instance' => 'Amit Sidhpura']);
         $this->assertSame('Amit Sidhpura', $this->app->get('name'));
         $this->app->set('name', function () { return 'Amit Sidhpura'; });
+
+        echo $this->app->get('name');
+
         $this->assertSame('Amit Sidhpura', $this->app->get('name'));
         $this->app->set('name', ['instance' => function () { return 'Amit Sidhpura'; }]);
         $this->assertSame('Amit Sidhpura', $this->app->get('name'));
