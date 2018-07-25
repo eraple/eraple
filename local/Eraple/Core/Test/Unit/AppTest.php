@@ -304,7 +304,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->app->setModule(SampleModule::class);
         $this->app->setTask(SampleTask::class);
         $this->app->setService('name', 'Amit Sidhpura');
-        $this->app->isEntryCircularDependent('sample-stack', 'sample-entry');
+        $this->app->checkCircularDependency('sample-stack', 'sample-entry');
         $this->assertSame(['sample-module' => SampleModule::class], $this->app->getModules());
         $this->assertSame(['sample-task' => SampleTask::class], $this->app->getTasks());
         $this->assertSame(['name' => 'Amit Sidhpura'], array_diff_key($this->app->getServices(), [App::class => '']));
@@ -349,14 +349,14 @@ class AppTest extends \PHPUnit\Framework\TestCase
     /* test it can check whether entry is circular dependent */
     public function testFunctionIsEntryCircularDependent()
     {
-        $this->app->isEntryCircularDependent('sample1-id', 'sample1-entry1');
-        $this->app->isEntryCircularDependent('sample1-id', 'sample1-entry2');
-        $this->app->isEntryCircularDependent('sample2-id', 'sample2-entry1');
-        $this->app->isEntryCircularDependent('sample2-id', 'sample2-entry2');
+        $this->app->checkCircularDependency('sample1-id', 'sample1-entry1');
+        $this->app->checkCircularDependency('sample1-id', 'sample1-entry2');
+        $this->app->checkCircularDependency('sample2-id', 'sample2-entry1');
+        $this->app->checkCircularDependency('sample2-id', 'sample2-entry2');
         $dependencyStack = ['sample1-id' => ['sample1-entry1', 'sample1-entry2'], 'sample2-id' => ['sample2-entry1', 'sample2-entry2']];
         $this->assertSame($dependencyStack, $this->app->getDependencyStack());
         $this->expectException(CircularDependencyException::class);
-        $this->app->isEntryCircularDependent('sample1-id', 'sample1-entry1');
+        $this->app->checkCircularDependency('sample1-id', 'sample1-entry1');
     }
 
     /* test it can convert delimiters string to camelcase string */

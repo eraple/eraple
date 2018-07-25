@@ -71,6 +71,13 @@ class App implements ContainerInterface
     protected $dependencyStack = [];
 
     /**
+     * Application log.
+     *
+     * @var array
+     */
+    protected $log = [];
+
+    /**
      * Application constructor.
      *
      * @param string $rootPath Root path of the application
@@ -128,15 +135,22 @@ class App implements ContainerInterface
      */
     public function run()
     {
+        /* set app start log */
+        $this->setLog('app', 'start');
+
+        /* run application */
         $this->collectModules();
         $this->collectTasks();
         $this->collectServices();
-        $this->fire('before-start');
+        $this->fire('before:start');
         $this->fire('start');
-        $this->fire('after-start');
-        $this->fire('before-end');
+        $this->fire('after:start');
+        $this->fire('before:end');
         $this->fire('end');
-        $this->fire('after-end');
+        $this->fire('after:end');
+
+        /* set app end log */
+        $this->setLog('app', 'end');
     }
 
     /**
@@ -205,6 +219,9 @@ class App implements ContainerInterface
             'Module "%s" is invalid', $class
         ));
 
+        /* set module set log */
+        $this->setLog('module', $class);
+
         $this->modules[$class::getName()] = $class;
     }
 
@@ -221,6 +238,9 @@ class App implements ContainerInterface
         if (!is_subclass_of($class, Task::class) || !$this->isNameValid($class::getName())) throw new InvalidTaskException(sprintf(
             'Task "%s" is invalid', $class
         ));
+
+        /* set task set log */
+        $this->setLog('task', $class);
 
         $this->tasks[$class::getName()] = $class;
     }
@@ -264,20 +284,22 @@ class App implements ContainerInterface
      */
     public function set(string $id, $entry)
     {
-        /* fire some event here */
-        extract($this->fire('some-event', ['id' => $id, 'entry' => $entry]));
+        /* fire set event */
+        extract($this->fire('set', ['id' => $id, 'entry' => $entry]));
 
         /* check whether service is valid */
         $valid = false;
-        foreach (['KeyValue', 'KeyConfig', 'ClassInstance', 'ClassConfig', 'InterfaceInstance', 'InterfaceClass', 'InterfaceConfig', 'AliasConfig'] as $serviceType) {
-            if ($this->{'is' . $serviceType . 'Pair'}($id, $entry)) {
-                $valid = true;
-                break;
-            }
+        $serviceTypes = ['KeyValue', 'KeyConfig', 'ClassInstance', 'ClassConfig', 'InterfaceInstance', 'InterfaceClass', 'InterfaceConfig', 'AliasConfig'];
+        foreach ($serviceTypes as $serviceType) if ($this->{'is' . $serviceType . 'Pair'}($id, $entry)) {
+            $valid = true;
+            break;
         }
 
         /* throw exception if entry not valid */
         if (!$valid) throw new InvalidServiceException(sprintf('Service with id "%s" is invalid', $id));
+
+        /* set service set log */
+        $this->setLog('service', $id);
 
         /* set service to the application */
         $this->services[$id] = $entry;
@@ -439,11 +461,14 @@ class App implements ContainerInterface
      */
     public function has($id)
     {
-        /* fire some event here */
-        extract($this->fire('some-event', ['id' => $id]));
+        /* fire has event */
+        extract($this->fire('has', ['id' => $id]));
 
         /* check has service */
         $has = key_exists($id, $this->services) || (class_exists($id) && !interface_exists($id));
+
+        /* fire has event */
+        extract($this->fire('has:result', ['id' => $id, 'has' => $has]));
 
         return $has;
     }
@@ -466,11 +491,14 @@ class App implements ContainerInterface
      */
     public function get($id, $entry = null)
     {
-        /* add stack entry */
-        $this->isEntryCircularDependent('instance', $id);
+        /* fire get event */
+        extract($this->fire('get', ['id' => $id, 'entry' => $entry]));
 
-        /* fire some event here */
-        extract($this->fire('some-event', ['id' => $id, 'entry' => $entry]));
+        /* add stack entry */
+        $this->checkCircularDependency('instance', $id);
+
+        /* set get start log */
+        $this->setLog('get', 'start:' . $id);
 
         /* entry not found and not instantiable */
         if (!$this->has($id) && is_null($entry)) throw new NotFoundException(sprintf('Service with id "%s" not found', $id));
@@ -482,18 +510,23 @@ class App implements ContainerInterface
 
         /* check whether service is valid */
         $instance = null;
-        foreach (['KeyValue', 'KeyConfig', 'ClassInstance', 'ClassConfig', 'InterfaceInstance', 'InterfaceClass', 'InterfaceConfig', 'AliasConfig'] as $serviceType) {
-            if ($this->{'is' . $serviceType . 'Pair'}($id, $entry)) {
-                $instance = $this->{'getBy' . $serviceType . 'Pair'}($id, $entry);
-                break;
-            }
+        $serviceTypes = ['KeyValue', 'KeyConfig', 'ClassInstance', 'ClassConfig', 'InterfaceInstance', 'InterfaceClass', 'InterfaceConfig', 'AliasConfig'];
+        foreach ($serviceTypes as $serviceType) if ($this->{'is' . $serviceType . 'Pair'}($id, $entry)) {
+            $instance = $this->{'getBy' . $serviceType . 'Pair'}($id, $entry);
+            break;
         }
 
         /* if entry is not null and prepared entry is null */
         if (is_null($instance)) throw new InvalidServiceException(sprintf('Service with id "%s" is invalid', $id));
 
+        /* set get start log */
+        $this->setLog('get', 'end:' . $id);
+
         /* remove stack entry */
         array_pop($this->dependencyStack['instance']);
+
+        /* fire get:instance event */
+        extract($this->fire('get:instance', ['id' => $id, 'entry' => $entry, 'instance' => $instance]));
 
         return $instance;
     }
@@ -719,6 +752,9 @@ class App implements ContainerInterface
      */
     public function fire(string $event, array $data = [])
     {
+        /* set event start log */
+        $this->setLog('event', 'start:' . $event);
+
         /* return if event name is not valid */
         if (!$this->isNameValid($event)) throw new InvalidEventException(sprintf('Event "%s" is invalid', $event));
 
@@ -726,6 +762,9 @@ class App implements ContainerInterface
         foreach ($this->getTasks(['event' => $event], 'and', 'index') as $task) {
             $data = $this->runTask($task, $data);
         }
+
+        /* set event end log */
+        $this->setLog('event', 'end:' . $event);
 
         return $data;
     }
@@ -749,11 +788,11 @@ class App implements ContainerInterface
     public function runTask(string $task, array $data = [])
     {
         /* add stack entry */
-        $this->isEntryCircularDependent('task', $task);
+        $this->checkCircularDependency('task', $task);
 
         /* replace task */
         /* @var $task Task::class */
-        if (count($replacementTasks = $this->getTasks(['event' => 'replace-task-' . $task::getName()], 'and', 'index'))) {
+        if (count($replacementTasks = $this->getTasks(['event' => 'replace:run-task:' . $task::getName()], 'and', 'index'))) {
             $data = $this->runTask(reset($replacementTasks), $data);
             /* remove stack entry */
             array_pop($this->dependencyStack['task']);
@@ -762,21 +801,144 @@ class App implements ContainerInterface
         }
 
         /* run tasks before task */
-        $data = $this->fire('before-task', $data);
-        $data = $this->fire('before-task-' . $task::getName(), $data);
+        $data = $this->fire('before:run-task', $data);
+        $data = $this->fire('before:run-task:' . $task::getName(), $data);
+
+        /* set task start log */
+        $this->setLog('task', 'start:' . $task);
 
         /* run task */
         $returnData = $this->runMethod($task, 'run', [], ['data' => $data]);
         $data = is_array($returnData) ? $returnData : $data;
 
+        /* set task end log */
+        $this->setLog('task', 'end:' . $task);
+
         /* run tasks after task */
-        $data = $this->fire('after-task', $data);
-        $data = $this->fire('after-task-' . $task::getName(), $data);
+        $data = $this->fire('after:run-task', $data);
+        $data = $this->fire('after:run-task:' . $task::getName(), $data);
 
         /* remove stack entry */
         array_pop($this->dependencyStack['task']);
 
         return $data;
+    }
+
+    /**
+     * Get reflection classes set to the application.
+     *
+     * @return \ReflectionClass[]
+     */
+    public function getReflectionClasses()
+    {
+        return $this->reflectionClasses;
+    }
+
+    /**
+     * Get all the modules set to the application.
+     *
+     * @return Module[]
+     */
+    public function getModules()
+    {
+        return $this->modules;
+    }
+
+    /**
+     * Get all the tasks set to the application.
+     *
+     * @param  array $filterBy Filter fields array
+     * @param string $filterLogic Filter condition "and" or "or"
+     * @param string $orderBy Order by field
+     * @param string $order Ascending "asc" or descending "dsc" order
+     *
+     * @return Task[]
+     */
+    public function getTasks($filterBy = [], $filterLogic = 'and', $orderBy = null, $order = 'asc')
+    {
+        $tasks = $this->tasks;
+
+        /* filter tasks */
+        if (count($filterBy)) {
+            $tasks = array_filter($tasks, function (string $task) use ($filterBy, $filterLogic) {
+                /* @var $task Task::class */
+                $areNamesEqual = key_exists('name', $filterBy) ? $task::getName() === $filterBy['name'] : $filterLogic === 'and';
+                $areEventsEqual = key_exists('event', $filterBy) ? $task::getEvent() === $filterBy['event'] : $filterLogic === 'and';
+
+                return $filterLogic === 'and' ? $areNamesEqual && $areEventsEqual : $areNamesEqual || $areEventsEqual;
+            });
+        }
+
+        /* order tasks */
+        if ($order !== null) {
+            uasort($tasks, function (string $task1, string $task2) use ($orderBy, $order) {
+                /* @var $task1 Task */
+                /* @var $task2 Task */
+                return $orderBy === 'name'
+                    ? ($order === 'asc' ? $task1::getName() > $task2::getName() : $task1::getName() < $task2::getName())
+                    : ($order === 'asc' ? $task1::getIndex() > $task2::getIndex() : $task1::getIndex() < $task2::getIndex());
+            });
+        }
+
+        return $tasks;
+    }
+
+    /**
+     * Get all the services set to the application.
+     *
+     * @return array
+     */
+    public function getServices()
+    {
+        return $this->services;
+    }
+
+    /**
+     * Get stack of instances of the application.
+     *
+     * @return array
+     */
+    public function getDependencyStack()
+    {
+        return $this->dependencyStack;
+    }
+
+    /**
+     * Get application log.
+     */
+    public function getLog()
+    {
+        return $this->log;
+    }
+
+    /**
+     * Get root path of the application.
+     *
+     * @return string
+     */
+    public function getRootPath()
+    {
+        return trim($this->rootPath, '/\\') . DIRECTORY_SEPARATOR;
+    }
+
+    /**
+     * Get local modules path of the application.
+     *
+     * @return string
+     */
+    public function getLocalPath()
+    {
+        return $this->getRootPath() . 'local' . DIRECTORY_SEPARATOR;
+    }
+
+    /**
+     * Get vendor modules path of the application.
+     *
+     * @return string
+     */
+    public function getVendorPath()
+    {
+        return $this->getRootPath() . 'vendor' . DIRECTORY_SEPARATOR;
     }
 
     /**
@@ -861,85 +1023,6 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get reflection classes set to the application.
-     *
-     * @return \ReflectionClass[]
-     */
-    public function getReflectionClasses()
-    {
-        return $this->reflectionClasses;
-    }
-
-    /**
-     * Get all the modules set to the application.
-     *
-     * @return Module[]
-     */
-    public function getModules()
-    {
-        return $this->modules;
-    }
-
-    /**
-     * Get all the tasks set to the application.
-     *
-     * @param  array $filterBy Filter fields array
-     * @param string $filterLogic Filter condition "and" or "or"
-     * @param string $orderBy Order by field
-     * @param string $order Ascending "asc" or descending "dsc" order
-     *
-     * @return Task[]
-     */
-    public function getTasks($filterBy = [], $filterLogic = 'and', $orderBy = null, $order = 'asc')
-    {
-        $tasks = $this->tasks;
-
-        /* filter tasks */
-        if (count($filterBy)) {
-            $tasks = array_filter($tasks, function (string $task) use ($filterBy, $filterLogic) {
-                /* @var $task Task::class */
-                $areNamesEqual = key_exists('name', $filterBy) ? $task::getName() === $filterBy['name'] : $filterLogic === 'and';
-                $areEventsEqual = key_exists('event', $filterBy) ? $task::getEvent() === $filterBy['event'] : $filterLogic === 'and';
-
-                return $filterLogic === 'and' ? $areNamesEqual && $areEventsEqual : $areNamesEqual || $areEventsEqual;
-            });
-        }
-
-        /* order tasks */
-        if ($order !== null) {
-            uasort($tasks, function (string $task1, string $task2) use ($orderBy, $order) {
-                /* @var $task1 Task */
-                /* @var $task2 Task */
-                return $orderBy === 'name'
-                    ? ($order === 'asc' ? $task1::getName() > $task2::getName() : $task1::getName() < $task2::getName())
-                    : ($order === 'asc' ? $task1::getIndex() > $task2::getIndex() : $task1::getIndex() < $task2::getIndex());
-            });
-        }
-
-        return $tasks;
-    }
-
-    /**
-     * Get all the services set to the application.
-     *
-     * @return array
-     */
-    public function getServices()
-    {
-        return $this->services;
-    }
-
-    /**
-     * Get stack of instances of the application.
-     *
-     * @return array
-     */
-    public function getDependencyStack()
-    {
-        return $this->dependencyStack;
-    }
-
-    /**
      * Flush all the modules, tasks, services and instance stack of the application.
      */
     public function flush()
@@ -948,36 +1031,41 @@ class App implements ContainerInterface
         $this->tasks = [];
         $this->services = [];
         $this->dependencyStack = [];
+        $this->log = [];
     }
 
     /**
-     * Get root path of the application.
+     * Check if there is circular dependency.
      *
-     * @return string
+     * @param string $type Unique stack id
+     * @param string $entry Entry to check
+     *
+     * @throws CircularDependencyException
      */
-    public function getRootPath()
+    public function checkCircularDependency(string $type, string $entry)
     {
-        return trim($this->rootPath, '/\\') . DIRECTORY_SEPARATOR;
+        if (!key_exists($type, $this->dependencyStack)) $this->dependencyStack[$type] = [];
+
+        if (in_array($entry, $this->dependencyStack[$type])) {
+            throw new CircularDependencyException(
+                sprintf('Circular dependency in stack "%s": %s -> %s', $type, implode(' -> ', $this->dependencyStack[$type]), $entry)
+            );
+        } else {
+            $this->dependencyStack[$type][] = $entry;
+        }
     }
 
     /**
-     * Get local modules path of the application.
+     * Set log entry of particular type to the application.
      *
-     * @return string
+     * @param string $type
+     * @param string $entry
      */
-    public function getLocalPath()
+    public function setLog(string $type, string $entry)
     {
-        return $this->getRootPath() . 'local' . DIRECTORY_SEPARATOR;
-    }
+        if (!key_exists($type, $this->log)) $this->log[$type] = [];
 
-    /**
-     * Get vendor modules path of the application.
-     *
-     * @return string
-     */
-    public function getVendorPath()
-    {
-        return $this->getRootPath() . 'vendor' . DIRECTORY_SEPARATOR;
+        $this->log[$type][] = ['time' => date('Y-m-d H:i:s'), 'entry' => $entry];
     }
 
     /**
@@ -989,7 +1077,7 @@ class App implements ContainerInterface
      */
     public function isNameValid(string $name)
     {
-        if (!empty($name) && preg_match('/^[0-9a-z-]{3,255}$/', $name)) {
+        if (!empty($name) && preg_match('/^[0-9a-z-:]{3,255}$/', $name)) {
             return true;
         }
 
@@ -997,24 +1085,15 @@ class App implements ContainerInterface
     }
 
     /**
-     * Check if there is circular dependency.
+     * Convert full class path to valid name.
      *
-     * @param string $stackId Unique stack id
-     * @param string $entry Entry to check
+     * @param string $class
      *
-     * @throws CircularDependencyException
+     * @return string
      */
-    public function isEntryCircularDependent(string $stackId, string $entry)
+    public function classToName(string $class)
     {
-        if (!key_exists($stackId, $this->dependencyStack)) $this->dependencyStack[$stackId] = [];
-
-        if (in_array($entry, $this->dependencyStack[$stackId])) {
-            throw new CircularDependencyException(
-                sprintf('Circular dependency in stack "%s": %s -> %s', $stackId, implode(' -> ', $this->dependencyStack[$stackId]), $entry)
-            );
-        } else {
-            $this->dependencyStack[$stackId][] = $entry;
-        }
+        return strtolower(preg_replace('/[^a-zA-Z0-9-]+/', '-', $class));
     }
 
     /**
@@ -1041,17 +1120,5 @@ class App implements ContainerInterface
     public function uncamelize(string $string, string $delimiter = '-')
     {
         return strtolower(preg_replace('/([a-z])([A-Z])/', '\\1' . $delimiter . '\\2', $string));
-    }
-
-    /**
-     * Convert full class path to valid name.
-     *
-     * @param string $class
-     *
-     * @return string
-     */
-    public function classToName(string $class)
-    {
-        return strtolower(preg_replace('/[^a-zA-Z0-9-]+/', '-', $class));
     }
 }
