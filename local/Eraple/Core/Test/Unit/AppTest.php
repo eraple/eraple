@@ -224,7 +224,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
         /* set reflection classes entry of the application */
         /* if method is constructor and constructor does not exist return instance of the class */
         $sampleService = $this->app->runMethod(SampleService::class);
-        $reflectionClasses = $this->app->getReflectionClasses();
+        $reflectionClasses = $this->app->getReflections();
         $this->assertArrayHasKey(SampleService::class, $reflectionClasses);
         $this->assertInstanceOf(\ReflectionClass::class, $reflectionClasses[SampleService::class]);
         $this->assertInstanceOf(SampleService::class, $sampleService);
@@ -235,7 +235,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $services = [SampleServiceInterface::class => SampleService::class];
         $parameters = ['name' => 'Amit Sidhpura'];
         $return = $this->app->runMethod('sample-closure', $function, $services, $parameters);
-        $reflectionClasses = $this->app->getReflectionClasses();
+        $reflectionClasses = $this->app->getReflections();
         $this->assertArrayHasKey('sample-closure', $reflectionClasses);
         $this->assertInstanceOf(\ReflectionFunction::class, $reflectionClasses['sample-closure']);
         $this->assertSame('Amit Sidhpura', $return['name']);
@@ -262,10 +262,10 @@ class AppTest extends \PHPUnit\Framework\TestCase
     }
 
     /* test it can get reflection classes */
-    public function testFunctionGetReflectionClasses()
+    public function testFunctionGetReflections()
     {
         $this->app->runMethod(SampleService::class);
-        $reflectionClasses = $this->app->getReflectionClasses();
+        $reflectionClasses = $this->app->getReflections();
         $this->assertArrayHasKey(SampleService::class, $reflectionClasses);
         $this->assertInstanceOf(\ReflectionClass::class, $reflectionClasses[SampleService::class]);
     }

@@ -36,46 +36,46 @@ class App implements ContainerInterface
     protected static $instance;
 
     /**
-     * Set reflection classes.
-     *
-     * @var \ReflectionClass[]|\ReflectionFunction[]
-     */
-    protected $reflectionClasses = [];
-
-    /**
-     * Set modules.
+     * Application modules.
      *
      * @var Module[]
      */
     protected $modules = [];
 
     /**
-     * Set tasks.
+     * Application tasks.
      *
      * @var Task[]
      */
     protected $tasks = [];
 
     /**
-     * Set services.
+     * Application services.
      *
      * @var array
      */
     protected $services = [];
 
     /**
-     * Dependency stack.
+     * Application logs.
+     *
+     * @var array
+     */
+    protected $logs = [];
+
+    /**
+     * Application reflection classes and functions.
+     *
+     * @var \ReflectionClass[]|\ReflectionFunction[]
+     */
+    protected $reflections = [];
+
+    /**
+     * Application dependency stack.
      *
      * @var array
      */
     protected $dependencyStack = [];
-
-    /**
-     * Application log.
-     *
-     * @var array
-     */
-    protected $log = [];
 
     /**
      * Application constructor.
@@ -121,7 +121,7 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get version of the application.
+     * Get the application version.
      *
      * @return string
      */
@@ -154,7 +154,7 @@ class App implements ContainerInterface
     }
 
     /**
-     * Set modules in local and vendor paths.
+     * Collect modules from local and vendor paths and set it to the application.
      */
     protected function collectModules()
     {
@@ -174,7 +174,7 @@ class App implements ContainerInterface
     }
 
     /**
-     * Set module tasks.
+     * Collect tasks from modules and set it to the application.
      */
     protected function collectTasks()
     {
@@ -190,7 +190,7 @@ class App implements ContainerInterface
     }
 
     /**
-     * Set services.
+     * Collect services from tasks and set it to the application.
      */
     protected function collectServices()
     {
@@ -226,7 +226,7 @@ class App implements ContainerInterface
     }
 
     /**
-     * Set a task with the application.
+     * Set a task to the application.
      *
      * @param string $class Task class
      *
@@ -246,10 +246,10 @@ class App implements ContainerInterface
     }
 
     /**
-     * Set an entry to the application.
+     * Set a service to the application.
      *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
+     * @param string $id Id of the service
+     * @param  mixed $entry Entry of the service
      *
      * @return $this
      *
@@ -267,10 +267,52 @@ class App implements ContainerInterface
     }
 
     /**
-     * Set an entry to the application.
+     * Set s log entry of particular type to the application.
      *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
+     * @param string $type
+     * @param string $entry
+     */
+    public function setLog(string $type, string $entry)
+    {
+        if (!key_exists($type, $this->logs)) $this->logs[$type] = [];
+
+        $this->logs[$type][] = ['time' => date('Y-m-d H:i:s'), 'entry' => $entry];
+    }
+
+    /**
+     * Check whether service is set to the application.
+     *
+     * @param string $id Id of the service
+     *
+     * @return bool
+     *
+     * @throws InvalidServiceException
+     * @throws InvalidEventException
+     * @throws CircularDependencyException
+     * @throws NotFoundException
+     * @throws MissingParameterException
+     * @throws ContainerException
+     * @throws \ReflectionException
+     */
+    public function has($id)
+    {
+        /* fire has event */
+        extract($this->fire('has', ['id' => $id]));
+
+        /* check has service */
+        $has = key_exists($id, $this->services) || (class_exists($id) && !interface_exists($id));
+
+        /* fire has event */
+        extract($this->fire('has:result', ['id' => $id, 'has' => $has]));
+
+        return $has;
+    }
+
+    /**
+     * Set a service to the application.
+     *
+     * @param string $id Id of the service
+     * @param  mixed $entry Entry of the service
      *
      * @return $this
      *
@@ -308,10 +350,10 @@ class App implements ContainerInterface
     }
 
     /**
-     * Check is service key-value pair.
+     * Check whether service is of type key-value pair.
      *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
+     * @param string $id Id of the service
+     * @param  mixed $entry Entry of the service
      *
      * @return bool
      */
@@ -326,10 +368,10 @@ class App implements ContainerInterface
     }
 
     /**
-     * Check is service key-config pair.
+     * Check whether service is of type key-config pair.
      *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
+     * @param string $id Id of the service
+     * @param  mixed $entry Entry of the service
      *
      * @return bool
      */
@@ -343,10 +385,10 @@ class App implements ContainerInterface
     }
 
     /**
-     * Check is service class-instance pair.
+     * Check whether service is of type class-instance pair.
      *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
+     * @param string $id Id of the service
+     * @param  mixed $entry Entry of the service
      *
      * @return bool
      */
@@ -360,10 +402,10 @@ class App implements ContainerInterface
     }
 
     /**
-     * Check is service class-config pair.
+     * Check whether service is of type class-config pair.
      *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
+     * @param string $id Id of the service
+     * @param  mixed $entry Entry of the service
      *
      * @return bool
      */
@@ -377,10 +419,10 @@ class App implements ContainerInterface
     }
 
     /**
-     * Check is service interface-instance pair.
+     * Check whether service is of type interface-instance pair.
      *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
+     * @param string $id Id of the service
+     * @param  mixed $entry Entry of the service
      *
      * @return bool
      */
@@ -394,10 +436,10 @@ class App implements ContainerInterface
     }
 
     /**
-     * Check is service interface-class pair.
+     * Check whether service is of type interface-class pair.
      *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
+     * @param string $id Id of the service
+     * @param  mixed $entry Entry of the service
      *
      * @return bool
      */
@@ -411,10 +453,10 @@ class App implements ContainerInterface
     }
 
     /**
-     * Check is service interface-config pair.
+     * Check whether service is of type interface-config pair.
      *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
+     * @param string $id Id of the service
+     * @param  mixed $entry Entry of the service
      *
      * @return bool
      */
@@ -428,10 +470,10 @@ class App implements ContainerInterface
     }
 
     /**
-     * Check is service alias-config pair.
+     * Check whether service is of type alias-config pair.
      *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
+     * @param string $id Id of the service
+     * @param  mixed $entry Entry of the service
      *
      * @return bool
      */
@@ -445,39 +487,10 @@ class App implements ContainerInterface
     }
 
     /**
-     * Check whether service is set to the application.
+     * Get an instance of service.
      *
-     * @param string $id Id of an entry
-     *
-     * @return bool
-     *
-     * @throws InvalidServiceException
-     * @throws InvalidEventException
-     * @throws CircularDependencyException
-     * @throws NotFoundException
-     * @throws MissingParameterException
-     * @throws ContainerException
-     * @throws \ReflectionException
-     */
-    public function has($id)
-    {
-        /* fire has event */
-        extract($this->fire('has', ['id' => $id]));
-
-        /* check has service */
-        $has = key_exists($id, $this->services) || (class_exists($id) && !interface_exists($id));
-
-        /* fire has event */
-        extract($this->fire('has:result', ['id' => $id, 'has' => $has]));
-
-        return $has;
-    }
-
-    /**
-     * Get an instance of the application service by its id.
-     *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
+     * @param string $id Id of the service
+     * @param  mixed $entry Entry of the service
      *
      * @return mixed
      *
@@ -532,10 +545,10 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get an instance of key-value type service.
+     * Get an instance of key-value pair type service.
      *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
+     * @param string $id Id of the service
+     * @param  mixed $entry Entry of the service
      *
      * @return mixed
      *
@@ -557,10 +570,10 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get an instance of key-config type service.
+     * Get an instance of key-config pair type service.
      *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
+     * @param string $id Id of the service
+     * @param  mixed $entry Entry of the service
      *
      * @return mixed
      *
@@ -585,10 +598,10 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get an instance of class-instance type service.
+     * Get an instance of class-instance pair type service.
      *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
+     * @param string $id Id of the service
+     * @param  mixed $entry Entry of the service
      *
      * @return mixed
      */
@@ -598,10 +611,10 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get an instance of class-config type service.
+     * Get an instance of class-config pair type service.
      *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
+     * @param string $id Id of the service
+     * @param  mixed $entry Entry of the service
      *
      * @return mixed
      *
@@ -633,10 +646,10 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get an instance of interface-instance type service.
+     * Get an instance of interface-instance pair type service.
      *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
+     * @param string $id Id of the service
+     * @param  mixed $entry Entry of the service
      *
      * @return mixed
      */
@@ -646,10 +659,10 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get an instance of interface-class type service.
+     * Get an instance of interface-class pair type service.
      *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
+     * @param string $id Id of the service
+     * @param  mixed $entry Entry of the service
      *
      * @return mixed
      *
@@ -667,10 +680,10 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get an instance of interface-config type service.
+     * Get an instance of interface-config pair type service.
      *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
+     * @param string $id Id of the service
+     * @param  mixed $entry Entry of the service
      *
      * @return mixed
      *
@@ -701,10 +714,10 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get an instance of alias-config type service.
+     * Get an instance of alias-config pair type service.
      *
-     * @param string $id Id of an entry
-     * @param  mixed $entry Entry of the application
+     * @param string $id Id of the service
+     * @param  mixed $entry Entry of the service
      *
      * @return mixed
      *
@@ -735,7 +748,7 @@ class App implements ContainerInterface
     }
 
     /**
-     * Fire an event and run all associated tasks.
+     * Fire an event.
      *
      * @param string $event Name of the event
      * @param  array $data Data passed to the task
@@ -770,7 +783,7 @@ class App implements ContainerInterface
     }
 
     /**
-     * Run task with related tasks.
+     * Run task along with related tasks.
      *
      * @param string $task Task to run
      * @param  array $data Data passed to the task
@@ -825,17 +838,7 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get reflection classes set to the application.
-     *
-     * @return \ReflectionClass[]
-     */
-    public function getReflectionClasses()
-    {
-        return $this->reflectionClasses;
-    }
-
-    /**
-     * Get all the modules set to the application.
+     * Get modules set to the application.
      *
      * @return Module[]
      */
@@ -845,7 +848,7 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get all the tasks set to the application.
+     * Get tasks set to the application.
      *
      * @param  array $filterBy Filter fields array
      * @param string $filterLogic Filter condition "and" or "or"
@@ -884,7 +887,7 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get all the services set to the application.
+     * Get services set to the application.
      *
      * @return array
      */
@@ -894,21 +897,31 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get stack of instances of the application.
+     * Get logs set to the application.
+     */
+    public function getLogs()
+    {
+        return $this->logs;
+    }
+
+    /**
+     * Get reflection classes and functions set to the application.
+     *
+     * @return \ReflectionClass[]|\ReflectionFunction[]
+     */
+    public function getReflections()
+    {
+        return $this->reflections;
+    }
+
+    /**
+     * Get dependency stack set to the application.
      *
      * @return array
      */
     public function getDependencyStack()
     {
         return $this->dependencyStack;
-    }
-
-    /**
-     * Get application log.
-     */
-    public function getLog()
-    {
-        return $this->log;
     }
 
     /**
@@ -922,7 +935,7 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get local modules path of the application.
+     * Get local path of the application.
      *
      * @return string
      */
@@ -932,7 +945,7 @@ class App implements ContainerInterface
     }
 
     /**
-     * Get vendor modules path of the application.
+     * Get vendor path of the application.
      *
      * @return string
      */
@@ -942,14 +955,14 @@ class App implements ContainerInterface
     }
 
     /**
-     * Run class method with services and parameters and return output.
+     * Run class method or closure by injecting dependencies.
      *
-     * @param string $id Id of an entry
+     * @param string $id Id of the service
      * @param  mixed $method Class method or closure to run
-     * @param  array $services Array that maps class or interface names to a service name
-     * @param  array $parameters Array of parameters to pass to method
+     * @param  array $services Services to inject
+     * @param  array $parameters Parameters to inject
      *
-     * @return null|mixed
+     * @return mixed|null
      *
      * @throws InvalidServiceException
      * @throws InvalidEventException
@@ -971,16 +984,16 @@ class App implements ContainerInterface
         $isMethodConstructor = is_string($method) && strcmp($method, '__construct') === 0;
 
         /* if id is class and reflection not set set it */
-        if (is_string($method) && !key_exists($id, $this->reflectionClasses)) $this->reflectionClasses[$id] = new \ReflectionClass($id);
+        if (is_string($method) && !key_exists($id, $this->reflections)) $this->reflections[$id] = new \ReflectionClass($id);
 
         /* if method is closure and reflection not set set it */
-        if (!is_string($method) && !key_exists($id, $this->reflectionClasses)) $this->reflectionClasses[$id] = new \ReflectionFunction($method);
+        if (!is_string($method) && !key_exists($id, $this->reflections)) $this->reflections[$id] = new \ReflectionFunction($method);
 
         /* if method is constructor and constructor does not exist return instance without parameters */
-        if ($isMethodConstructor && is_null($this->reflectionClasses[$id]->getConstructor())) return new $id();
+        if ($isMethodConstructor && is_null($this->reflections[$id]->getConstructor())) return new $id();
 
         /* get reflection method */
-        $reflectionMethod = is_string($method) ? $this->reflectionClasses[$id]->getMethod($method) : $this->reflectionClasses[$id];
+        $reflectionMethod = is_string($method) ? $this->reflections[$id]->getMethod($method) : $this->reflections[$id];
 
         /* resolve parameters */
         $classParameters = $reflectionMethod->getParameters();
@@ -1023,21 +1036,9 @@ class App implements ContainerInterface
     }
 
     /**
-     * Flush all the modules, tasks, services and instance stack of the application.
-     */
-    public function flush()
-    {
-        $this->modules = [];
-        $this->tasks = [];
-        $this->services = [];
-        $this->dependencyStack = [];
-        $this->log = [];
-    }
-
-    /**
      * Check if there is circular dependency.
      *
-     * @param string $type Unique stack id
+     * @param string $type Stack type
      * @param string $entry Entry to check
      *
      * @throws CircularDependencyException
@@ -1056,22 +1057,22 @@ class App implements ContainerInterface
     }
 
     /**
-     * Set log entry of particular type to the application.
-     *
-     * @param string $type
-     * @param string $entry
+     * Flush the application instance.
      */
-    public function setLog(string $type, string $entry)
+    public function flush()
     {
-        if (!key_exists($type, $this->log)) $this->log[$type] = [];
-
-        $this->log[$type][] = ['time' => date('Y-m-d H:i:s'), 'entry' => $entry];
+        $this->modules = [];
+        $this->tasks = [];
+        $this->services = [];
+        $this->logs = [];
+        $this->reflections = [];
+        $this->dependencyStack = [];
     }
 
     /**
-     * Check whether name is valid module and task name.
+     * Check whether name is a valid module, task or event name.
      *
-     * @param string $name Module or task name
+     * @param string $name Module, task or event name
      *
      * @return bool
      */
@@ -1087,7 +1088,7 @@ class App implements ContainerInterface
     /**
      * Convert full class path to valid name.
      *
-     * @param string $class
+     * @param string $class Class path
      *
      * @return string
      */
@@ -1097,7 +1098,7 @@ class App implements ContainerInterface
     }
 
     /**
-     * Convert string with delimiters to camelcase.
+     * Convert delimiters string to camelcase string.
      *
      * @param string $string String to convert to camelcase
      * @param string $delimiter Delimiter to replace
