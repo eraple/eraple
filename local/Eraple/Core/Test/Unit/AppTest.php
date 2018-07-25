@@ -10,7 +10,6 @@ use Eraple\Core\Exception\InvalidEventException;
 use Eraple\Core\Exception\CircularDependencyException;
 use Eraple\Core\Exception\NotFoundException;
 use Eraple\Core\Exception\MissingParameterException;
-use Eraple\Core\Exception\ContainerException;
 use Eraple\Core\Test\Unit\Data\App\Local\Eraple\Base\Module;
 use Eraple\Core\Test\Unit\Data\App\Local\Eraple\Base\Task\TaskOne;
 use Eraple\Core\Test\Unit\Data\App\Local\Eraple\Base\Task\TaskTwo;

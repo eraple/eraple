@@ -10,7 +10,6 @@ use Eraple\Core\Exception\InvalidEventException;
 use Eraple\Core\Exception\CircularDependencyException;
 use Eraple\Core\Exception\NotFoundException;
 use Eraple\Core\Exception\MissingParameterException;
-use Eraple\Core\Exception\ContainerException;
 
 class App implements ContainerInterface
 {
@@ -87,7 +86,6 @@ class App implements ContainerInterface
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
-     * @throws ContainerException
      * @throws \ReflectionException
      */
     public function __construct(string $rootPath = null)
@@ -108,7 +106,6 @@ class App implements ContainerInterface
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
-     * @throws ContainerException
      * @throws \ReflectionException
      */
     public static function instance(string $rootPath = null)
@@ -258,7 +255,6 @@ class App implements ContainerInterface
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
-     * @throws ContainerException
      * @throws \ReflectionException
      */
     public function setService(string $id, $entry)
@@ -291,7 +287,6 @@ class App implements ContainerInterface
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
-     * @throws ContainerException
      * @throws \ReflectionException
      */
     public function has($id)
@@ -321,7 +316,6 @@ class App implements ContainerInterface
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
-     * @throws ContainerException
      * @throws \ReflectionException
      */
     public function set(string $id, $entry)
@@ -499,7 +493,6 @@ class App implements ContainerInterface
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
-     * @throws ContainerException
      * @throws \ReflectionException
      */
     public function get($id, $entry = null)
@@ -557,7 +550,6 @@ class App implements ContainerInterface
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
-     * @throws ContainerException
      * @throws \ReflectionException
      */
     protected function getByKeyValuePair(string $id, $entry)
@@ -582,7 +574,6 @@ class App implements ContainerInterface
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
-     * @throws ContainerException
      * @throws \ReflectionException
      */
     protected function getByKeyConfigPair(string $id, $entry)
@@ -623,7 +614,6 @@ class App implements ContainerInterface
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
-     * @throws ContainerException
      * @throws \ReflectionException
      */
     protected function getByClassConfigPair(string $id, $entry)
@@ -671,7 +661,6 @@ class App implements ContainerInterface
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
-     * @throws ContainerException
      * @throws \ReflectionException
      */
     protected function getByInterfaceClassPair(string $id, $entry)
@@ -692,7 +681,6 @@ class App implements ContainerInterface
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
-     * @throws ContainerException
      * @throws \ReflectionException
      */
     protected function getByInterfaceConfigPair(string $id, $entry)
@@ -726,7 +714,6 @@ class App implements ContainerInterface
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
-     * @throws ContainerException
      * @throws \ReflectionException
      */
     protected function getByAliasConfigPair(string $id, $entry)
@@ -760,7 +747,6 @@ class App implements ContainerInterface
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
-     * @throws ContainerException
      * @throws \ReflectionException
      */
     public function fire(string $event, array $data = [])
@@ -795,7 +781,6 @@ class App implements ContainerInterface
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
-     * @throws ContainerException
      * @throws \ReflectionException
      */
     public function runTask(string $task, array $data = [])
@@ -969,7 +954,6 @@ class App implements ContainerInterface
      * @throws CircularDependencyException
      * @throws NotFoundException
      * @throws MissingParameterException
-     * @throws ContainerException
      * @throws \ReflectionException
      */
     public function runMethod(string $id, $method = '__construct', array $services = [], array $parameters = [])
