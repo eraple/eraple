@@ -504,8 +504,8 @@ class App implements ContainerInterface
         /* add stack entry */
         $this->checkCircularDependency('instance', $id);
 
-        /* set get start log */
-        $this->setLog('get', 'start:' . $id);
+        /* set get before log */
+        $this->setLog('get', 'before:' . $id);
 
         /* entry not found and not instantiable */
         if (!$this->has($id) && is_null($entry)) throw new NotFoundException(sprintf('Service with id "%s" not found', $id));
@@ -526,8 +526,8 @@ class App implements ContainerInterface
         /* if entry is not null and prepared entry is null */
         if (is_null($instance)) throw new InvalidServiceException(sprintf('Service with id "%s" is invalid', $id));
 
-        /* set get start log */
-        $this->setLog('get', 'end:' . $id);
+        /* set get after log */
+        $this->setLog('get', 'after:' . $id);
 
         /* remove stack entry */
         array_pop($this->dependencyStack['instance']);
@@ -752,8 +752,8 @@ class App implements ContainerInterface
      */
     public function fire(string $event, array $data = [])
     {
-        /* set event start log */
-        $this->setLog('event', 'start:' . $event);
+        /* set event before log */
+        $this->setLog('event', 'before:' . $event);
 
         /* return if event name is not valid */
         if (!$this->isNameValid($event)) throw new InvalidEventException(sprintf('Event "%s" is invalid', $event));
@@ -763,8 +763,8 @@ class App implements ContainerInterface
             $data = $this->runTask($task, $data);
         }
 
-        /* set event end log */
-        $this->setLog('event', 'end:' . $event);
+        /* set event after log */
+        $this->setLog('event', 'after:' . $event);
 
         return $data;
     }
@@ -803,15 +803,15 @@ class App implements ContainerInterface
         $data = $this->fire('before:run-task', $data);
         $data = $this->fire('before:run-task:' . $task::getName(), $data);
 
-        /* set task start log */
-        $this->setLog('task', 'start:' . $task);
+        /* set task before log */
+        $this->setLog('task', 'before:' . $task);
 
         /* run task */
         $returnData = $this->runMethod($task, 'run', [], ['data' => $data]);
         $data = is_array($returnData) ? $returnData : $data;
 
-        /* set task end log */
-        $this->setLog('task', 'end:' . $task);
+        /* set task after log */
+        $this->setLog('task', 'after:' . $task);
 
         /* run tasks after task */
         $data = $this->fire('after:run-task', $data);
