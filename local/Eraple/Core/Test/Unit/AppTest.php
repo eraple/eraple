@@ -456,9 +456,6 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->app->set('name', ['instance' => 'Amit Sidhpura']);
         $this->assertSame('Amit Sidhpura', $this->app->get('name'));
         $this->app->set('name', function () { return 'Amit Sidhpura'; });
-
-        echo $this->app->get('name');
-
         $this->assertSame('Amit Sidhpura', $this->app->get('name'));
         $this->app->set('name', ['instance' => function () { return 'Amit Sidhpura'; }]);
         $this->assertSame('Amit Sidhpura', $this->app->get('name'));

@@ -24,9 +24,9 @@ abstract class Task
     /**
      * Task event.
      *
-     * @var string
+     * @var array
      */
-    protected static $event = 'before-end';
+    protected static $events = 'before-end';
 
     /**
      * Task index.
@@ -65,11 +65,11 @@ abstract class Task
     /**
      * Get the task event.
      *
-     * @return string
+     * @return array
      */
-    public static function getEvent(): string
+    public static function getEvents(): array
     {
-        return static::$event;
+        return is_array(static::$events) ? static::$events : [static::$events];
     }
 
     /**

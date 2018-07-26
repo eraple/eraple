@@ -9,7 +9,7 @@ class SampleTaskHandlesEvent extends Task
 {
     protected static $name = 'sample-task-handles-event';
 
-    protected static $event = 'something-happened';
+    protected static $events = 'something-happened';
 
     protected static $index = 0;
 

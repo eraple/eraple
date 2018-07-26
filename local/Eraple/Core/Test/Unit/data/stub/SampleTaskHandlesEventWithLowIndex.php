@@ -9,7 +9,7 @@ class SampleTaskHandlesEventWithLowIndex extends Task
 {
     protected static $name = 'sample-task-handles-event-with-low-index';
 
-    protected static $event = 'something-happened';
+    protected static $events = 'something-happened';
 
     protected static $index = -1;
 

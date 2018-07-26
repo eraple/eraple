@@ -9,7 +9,7 @@ class SampleTaskHandlesAfterTaskRunEvent extends Task
 {
     protected static $name = 'sample-task-handles-after-task-run-event';
 
-    protected static $event = 'after:run-task:sample-task-handles-event';
+    protected static $events = 'after:run-task:sample-task-handles-event';
 
     protected static $index = 0;
 

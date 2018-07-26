@@ -9,7 +9,7 @@ class SampleTaskHandlesReplaceTaskEvent extends Task
 {
     protected static $name = 'sample-task-handles-replace-task-event';
 
-    protected static $event = 'replace:run-task:sample-task-handles-event';
+    protected static $events = 'replace:run-task:sample-task-handles-event';
 
     protected static $index = 0;
 

@@ -9,7 +9,7 @@ class TaskBFollowsTaskA extends Task
 {
     protected static $name = 'b-follows-task-a';
 
-    protected static $event = 'after:run-task:a-follows-task-c';
+    protected static $events = 'after:run-task:a-follows-task-c';
 
     public function run(App $app, array $data = [])
     {

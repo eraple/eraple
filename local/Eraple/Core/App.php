@@ -37,16 +37,16 @@ class App implements ContainerInterface
     /**
      * Application modules.
      *
-     * @var Module[]
+     * @var array
      */
-    protected $modules = [];
+    protected $modules = ['byName' => []];
 
     /**
      * Application tasks.
      *
-     * @var Task[]
+     * @var array
      */
-    protected $tasks = [];
+    protected $tasks = ['byName' => [], 'byEvent' => []];
 
     /**
      * Application services.
@@ -176,7 +176,7 @@ class App implements ContainerInterface
     protected function collectTasks()
     {
         /* set tasks */
-        foreach ($this->modules as $module) {
+        foreach ($this->getModules() as $module) {
             $tasks = $module::getTasks();
 
             /* set task only if it is valid task */
@@ -192,7 +192,7 @@ class App implements ContainerInterface
     protected function collectServices()
     {
         /* set services */
-        foreach ($this->tasks as $task) {
+        foreach ($this->getTasks() as $task) {
             $services = $task::getServices();
 
             /* set service only if it is valid service */
@@ -219,7 +219,7 @@ class App implements ContainerInterface
         /* set module set log */
         $this->setLog('module', $class);
 
-        $this->modules[$class::getName()] = $class;
+        $this->modules['byName'][$class::getName()] = $class;
     }
 
     /**
@@ -239,7 +239,8 @@ class App implements ContainerInterface
         /* set task set log */
         $this->setLog('task', $class);
 
-        $this->tasks[$class::getName()] = $class;
+        $this->tasks['byName'][$class::getName()] = $class;
+        $this->tasks['byEvent'] = array_merge_recursive($this->tasks['byEvent'], array_fill_keys($class::getEvents(), [$class::getName() => $class]));
     }
 
     /**
@@ -265,8 +266,8 @@ class App implements ContainerInterface
     /**
      * Set s log entry of particular type to the application.
      *
-     * @param string $type
-     * @param string $entry
+     * @param string $type Log type
+     * @param string $entry Log entry
      */
     public function setLog(string $type, string $entry)
     {
@@ -829,7 +830,7 @@ class App implements ContainerInterface
      */
     public function getModules()
     {
-        return $this->modules;
+        return $this->modules['byName'];
     }
 
     /**
@@ -844,18 +845,18 @@ class App implements ContainerInterface
      */
     public function getTasks($filterBy = [], $filterLogic = 'and', $orderBy = null, $order = 'asc')
     {
-        $tasks = $this->tasks;
-
         /* filter tasks */
-        if (count($filterBy)) {
-            $tasks = array_filter($tasks, function (string $task) use ($filterBy, $filterLogic) {
-                /* @var $task Task::class */
-                $areNamesEqual = key_exists('name', $filterBy) ? $task::getName() === $filterBy['name'] : $filterLogic === 'and';
-                $areEventsEqual = key_exists('event', $filterBy) ? $task::getEvent() === $filterBy['event'] : $filterLogic === 'and';
+        $name = key_exists('name', $filterBy) ? $filterBy['name'] : null;
+        $event = key_exists('event', $filterBy) ? $filterBy['event'] : null;
+        $tasksByName = $this->tasks['byName'];
+        $tasksByEvent = $this->tasks['byEvent'];
+        $isLogicAnd = strcasecmp(count($filterBy) ? $filterLogic : 'and', 'and') === 0;
+        $tasksByLogic = $isLogicAnd ? $tasksByName : [];
 
-                return $filterLogic === 'and' ? $areNamesEqual && $areEventsEqual : $areNamesEqual || $areEventsEqual;
-            });
-        }
+        $tasksByName = !is_null($name) ? (key_exists($name, $tasksByName) ? [$name => $tasksByName[$name]] : []) : $tasksByLogic;
+        $tasksByEvent = !is_null($event) ? (key_exists($event, $tasksByEvent) ? $tasksByEvent[$event] : []) : $tasksByLogic;
+
+        $tasks = $isLogicAnd ? array_intersect_key($tasksByName, $tasksByEvent) : array_merge($tasksByName, $tasksByEvent);
 
         /* order tasks */
         if ($order !== null) {
@@ -1045,8 +1046,8 @@ class App implements ContainerInterface
      */
     public function flush()
     {
-        $this->modules = [];
-        $this->tasks = [];
+        $this->modules = ['byName' => []];
+        $this->tasks = ['byName' => [], 'byEvent' => []];
         $this->services = [];
         $this->logs = [];
         $this->reflections = [];
