@@ -271,9 +271,7 @@ class App implements ContainerInterface
      */
     public function setLog(string $type, string $entry)
     {
-        if (!key_exists($type, $this->logs)) $this->logs[$type] = [];
-
-        $this->logs[$type][] = ['time' => date('Y-m-d H:i:s'), 'entry' => $entry];
+        $this->logs[] = ['type' => $type, 'time' => (new \DateTime())->format('Y-m-d H:i:s:v'), 'entry' => $entry];
     }
 
     /**
