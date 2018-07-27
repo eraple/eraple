@@ -297,15 +297,9 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertSame('Amit Sidhpura', $this->app->get('name'));
         $this->app->set('name', ['instance' => 'Amit Sidhpura']);
         $this->assertSame('Amit Sidhpura', $this->app->get('name'));
-        $this->app->set('name', function () {
-            return 'Amit Sidhpura';
-        });
+        $this->app->set('name', function () { return 'Amit Sidhpura'; });
         $this->assertSame('Amit Sidhpura', $this->app->get('name'));
-        $this->app->set('name', [
-            'instance' => function () {
-                return 'Amit Sidhpura';
-            }
-        ]);
+        $this->app->set('name', ['instance' => function () { return 'Amit Sidhpura'; }]);
         $this->assertSame('Amit Sidhpura', $this->app->get('name'));
     }
 
@@ -674,9 +668,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
 
         /* set reflection classes function entry of the application */
         /* if method is closure with parameters return output by executing the function */
-        $function = function (string $name, SampleServiceInterface $sampleService) {
-            return ['name' => $name, 'sampleService' => $sampleService];
-        };
+        $function = function (string $name, SampleServiceInterface $sampleService) { return ['name' => $name, 'sampleService' => $sampleService]; };
         $services = [SampleServiceInterface::class => SampleService::class];
         $parameters = ['name' => 'Amit Sidhpura'];
         $return = $this->app->runMethod('sample-closure', $function, $services, $parameters);
