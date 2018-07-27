@@ -198,6 +198,15 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertSame(['name' => 'Amit Sidhpura'], $this->app->getServices());
         $this->assertSame('Amit Sidhpura', $this->app->get('name'));
 
+        /* set key-value pair with value as closure with arguments */
+        $this->app->flush();
+        $this->app->set('name', [
+            'instance'   => function (string $name, SampleServiceForServicesArgumentInterface $sampleServiceForServicesArgument) { return $name; },
+            'services'   => [SampleServiceForServicesArgumentInterface::class => SampleServiceForServicesArgument::class],
+            'parameters' => ['name' => 'Amit Sidhpura']
+        ]);
+        $this->assertSame('Amit Sidhpura', $this->app->get('name'));
+
         /* set key-config pair */
         $this->app->flush();
         $this->app->set('name', ['instance' => 'Amit Sidhpura']);
@@ -242,6 +251,26 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertSame(['name' => 'Amit Sidhpura', 'name-alias' => ['alias' => 'name']], $this->app->getServices());
         $this->assertSame('Amit Sidhpura', $this->app->get('name-alias'));
 
+        /* set alias-config with singleton property */
+        $this->app->flush();
+        $this->app->set('sample-service', ['alias' => SampleService::class, 'singleton' => false]);
+        $instance1 = $this->app->get('sample-service');
+        $instance2 = $this->app->get('sample-service');
+        $this->assertNotSame($instance1, $instance2);
+        $this->app->set('sample-service', ['alias' => SampleService::class, 'singleton' => true]);
+        $instance1 = $this->app->get('sample-service');
+        $instance2 = $this->app->get('sample-service');
+        $this->assertSame($instance1, $instance2);
+
+        /* test set class-config and override config by get entry */
+        $this->app->flush();
+        $this->app->set(SampleServiceHasParameters::class, [
+            'services'   => [SampleServiceForServicesArgumentInterface::class => SampleServiceForServicesArgument::class],
+            'parameters' => ['name' => 'Amit Sidhpura']
+        ]);
+        $instance = $this->app->get(SampleServiceHasParameters::class, ['parameters' => ['name' => 'Dipali Sidhpura']]);
+        $this->assertSame('Dipali Sidhpura', $instance->name);
+
         /* throw invalid service exception */
         $this->app->flush();
         $this->expectException(InvalidServiceException::class);
@@ -268,9 +297,15 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertSame('Amit Sidhpura', $this->app->get('name'));
         $this->app->set('name', ['instance' => 'Amit Sidhpura']);
         $this->assertSame('Amit Sidhpura', $this->app->get('name'));
-        $this->app->set('name', function () { return 'Amit Sidhpura'; });
+        $this->app->set('name', function () {
+            return 'Amit Sidhpura';
+        });
         $this->assertSame('Amit Sidhpura', $this->app->get('name'));
-        $this->app->set('name', ['instance' => function () { return 'Amit Sidhpura'; }]);
+        $this->app->set('name', [
+            'instance' => function () {
+                return 'Amit Sidhpura';
+            }
+        ]);
         $this->assertSame('Amit Sidhpura', $this->app->get('name'));
     }
 
@@ -639,7 +674,9 @@ class AppTest extends \PHPUnit\Framework\TestCase
 
         /* set reflection classes function entry of the application */
         /* if method is closure with parameters return output by executing the function */
-        $function = function (string $name, SampleServiceInterface $sampleService) { return ['name' => $name, 'sampleService' => $sampleService]; };
+        $function = function (string $name, SampleServiceInterface $sampleService) {
+            return ['name' => $name, 'sampleService' => $sampleService];
+        };
         $services = [SampleServiceInterface::class => SampleService::class];
         $parameters = ['name' => 'Amit Sidhpura'];
         $return = $this->app->runMethod('sample-closure', $function, $services, $parameters);
