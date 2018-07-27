@@ -58,7 +58,7 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->app = new App($this->rootPath);
     }
 
-    /* test it can instantiate and set root path */
+    /* test it can instantiate and set root path and itself */
     public function testFunctionConstruct()
     {
         $app = new App('some_path_here');
@@ -114,6 +114,20 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertSame('Sample module description.', SampleModule::getDescription());
     }
 
+    /* test it can throw invalid module exception when module does not extend abstract module */
+    public function testExtraThrowInvalidModuleExceptionWhenModuleDoesNotExtendAbstractModule()
+    {
+        $this->expectException(InvalidModuleException::class);
+        $this->app->setModule(NotExtendedAbstractModule::class);
+    }
+
+    /* test it can throw invalid module exception when module name is invalid */
+    public function testExtraThrowInvalidModuleExceptionWhenModuleNameIsInvalid()
+    {
+        $this->expectException(InvalidModuleException::class);
+        $this->app->setModule(InvalidNameModule::class);
+    }
+
     /* test it can set task */
     public function testFunctionSetTask()
     {
@@ -121,6 +135,20 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertSame(['sample-task' => SampleTask::class], $this->app->getTasks());
         $this->assertSame('sample-task', SampleTask::getName());
         $this->assertSame('Sample task description.', SampleTask::getDescription());
+    }
+
+    /* test it can throw invalid task exception when task does not extend abstract task */
+    public function testExtraThrowInvalidTaskExceptionWhenTaskDoesNotExtendAbstractTask()
+    {
+        $this->expectException(InvalidTaskException::class);
+        $this->app->setTask(NotExtendedAbstractTask::class);
+    }
+
+    /* test it can throw invalid task exception when task name is invalid */
+    public function testExtraThrowInvalidTaskExceptionWhenTaskNameIsInvalid()
+    {
+        $this->expectException(InvalidTaskException::class);
+        $this->app->setTask(InvalidNameTask::class);
     }
 
     /* test it can set service */
@@ -133,11 +161,11 @@ class AppTest extends \PHPUnit\Framework\TestCase
     /* test it can set log entry */
     public function testFunctionSetLog()
     {
+        $this->app->flush();
         $this->app->setLog('sample-type', 'sample-entry');
-        $logs = $this->app->getLogs();
-        $lastLog = end($logs);
-        $this->assertSame('sample-type', $lastLog['type']);
-        $this->assertSame('sample-entry', $lastLog['entry']);
+        $log = $this->app->getLogs();
+        $this->assertSame('sample-type', $log[0]['type']);
+        $this->assertSame('sample-entry', $log[0]['entry']);
     }
 
     /* test it can check entry exists */
@@ -213,6 +241,11 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->app->set('name-alias', ['alias' => 'name']);
         $this->assertSame(['name' => 'Amit Sidhpura', 'name-alias' => ['alias' => 'name']], $this->app->getServices());
         $this->assertSame('Amit Sidhpura', $this->app->get('name-alias'));
+
+        /* throw invalid service exception */
+        $this->app->flush();
+        $this->expectException(InvalidServiceException::class);
+        $this->app->set(SampleServiceInterface::class, '');
     }
 
     /* test it can get entry */
@@ -220,369 +253,6 @@ class AppTest extends \PHPUnit\Framework\TestCase
     {
         /* test covered in testFunctionSet */
         $this->assertTrue(true);
-    }
-
-    /* test it can fire event */
-    public function testFunctionFire()
-    {
-        /* test sequence of tasks based on event and index */
-        $this->app->setTask(SampleTaskHandlesEventWithHighIndex::class);
-        $this->app->setTask(SampleTaskHandlesEventWithLowIndex::class);
-        $this->app->setTask(SampleTaskHandlesEvent::class);
-        $data = $this->app->fire('something-happened', ['key' => '(fired)']);
-        $this->assertSame(['key' => '(fired) low on high'], $data);
-    }
-
-    /* test it can run task */
-    public function testFunctionRunTask()
-    {
-        $this->expectException(CircularDependencyException::class);
-        $this->app->setTask(TaskAFollowsTaskC::class);
-        $this->app->setTask(TaskBFollowsTaskA::class);
-        $this->app->setTask(TaskCFollowsTaskB::class);
-        $this->app->runTask(TaskAFollowsTaskC::class);
-    }
-
-    /* test it can get modules */
-    public function testFunctionGetModules()
-    {
-        /* test covered in testFunctionSetModule */
-        $this->assertTrue(true);
-    }
-
-    /* test it can get tasks */
-    public function testFunctionGetTasks()
-    {
-        /* set tasks */
-        $this->app->setTask(TaskNameAEventA::class);
-        $this->app->setTask(TaskNameAEventB::class);
-        $this->app->setTask(TaskNameBEventA::class);
-        $this->app->setTask(TaskNameBEventB::class);
-
-        /* all tasks */
-        $allTasks = [
-            'name-a-event-a' => TaskNameAEventA::class,
-            'name-a-event-b' => TaskNameAEventB::class,
-            'name-b-event-a' => TaskNameBEventA::class,
-            'name-b-event-b' => TaskNameBEventB::class
-        ];
-
-        /* test no filters with and */
-        $this->assertSame($allTasks, $this->app->getTasks());
-
-        /* test one filter with and */
-        $tasks = $allTasks;
-        unset($tasks['name-a-event-b']);
-        unset($tasks['name-b-event-b']);
-        $this->assertSame($tasks, $this->app->getTasks(['event' => 'event-a']));
-
-        /* test two filters with and */
-        unset($tasks['name-b-event-a']);
-        $this->assertSame($tasks, $this->app->getTasks(['name' => 'name-a-event-a', 'event' => 'event-a']));
-        $this->assertSame([], $this->app->getTasks(['name' => 'name-a-event-b', 'event' => 'event-a']));
-
-        /* test undefined filter with and */
-        $this->assertSame([], $this->app->getTasks(['name' => 'name-a-event-c', 'event' => 'event-c']));
-
-        /* test no filters with or */
-        $this->assertSame($allTasks, $this->app->getTasks([], 'or'));
-
-        /* test one filter with or */
-        $tasks = $allTasks;
-        unset($tasks['name-a-event-b']);
-        unset($tasks['name-b-event-b']);
-        $this->assertSame($tasks, $this->app->getTasks(['event' => 'event-a'], 'or'));
-
-        /* test two filters with or */
-        $tasks = $allTasks;
-        unset($tasks['name-b-event-b']);
-        $this->assertSame($tasks, $this->app->getTasks(['name' => 'name-a-event-b', 'event' => 'event-a'], 'or', 'name', 'asc'));
-
-        /* test undefined filter with or */
-        $this->assertSame([], $this->app->getTasks(['name' => 'name-a-event-c', 'event' => 'event-c'], 'or'));
-
-        /* test tasks in asc order */
-        $this->assertSame($allTasks, $this->app->getTasks([], 'and', 'name', 'asc'));
-
-        /* test tasks in dsc order */
-        $this->assertSame(array_reverse($allTasks), $this->app->getTasks([], 'and', 'name', 'dsc'));
-    }
-
-    /* test it can get services */
-    public function testFunctionGetServices()
-    {
-        /* test covered in testFunctionSet */
-        $this->assertTrue(true);
-    }
-
-    /* test it can get logs */
-    public function testFunctionGetLogs()
-    {
-        /* test covered in testFunctionSetLog */
-        $this->assertTrue(true);
-    }
-
-    /* test it can get reflection classes */
-    public function testFunctionGetReflections()
-    {
-        $this->app->runMethod(SampleService::class);
-        $reflectionClasses = $this->app->getReflections();
-        $this->assertArrayHasKey(SampleService::class, $reflectionClasses);
-        $this->assertInstanceOf(\ReflectionClass::class, $reflectionClasses[SampleService::class]);
-    }
-
-    /* test it can get dependency stack */
-    public function testFunctionGetDependencyStack()
-    {
-        /* test covered in testFunctionCheckCircularDependency */
-        $this->assertTrue(true);
-    }
-
-    /* test it can get root path */
-    public function testFunctionGetRootPath()
-    {
-        $this->assertSame($this->rootPath . DIRECTORY_SEPARATOR, $this->app->getRootPath());
-    }
-
-    /* test it can get local path */
-    public function testFunctionGetLocalPath()
-    {
-        $this->assertSame($this->rootPath . DIRECTORY_SEPARATOR . 'local' . DIRECTORY_SEPARATOR, $this->app->getLocalPath());
-    }
-
-    /* test it can get vendor path */
-    public function testFunctionGetVendorPath()
-    {
-        $this->assertSame($this->rootPath . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR, $this->app->getVendorPath());
-    }
-
-    /* test it can run method */
-    public function testFunctionRunMethod()
-    {
-        /* method is not string or closure */
-        $this->assertNull($this->app->runMethod('some-class', true));
-
-        /* method is string and id not class */
-        $this->assertNull($this->app->runMethod('not-class', 'some-method'));
-
-        /* set reflection classes entry of the application */
-        /* if method is constructor and constructor does not exist return instance of the class */
-        $sampleService = $this->app->runMethod(SampleService::class);
-        $reflectionClasses = $this->app->getReflections();
-        $this->assertArrayHasKey(SampleService::class, $reflectionClasses);
-        $this->assertInstanceOf(\ReflectionClass::class, $reflectionClasses[SampleService::class]);
-        $this->assertInstanceOf(SampleService::class, $sampleService);
-
-        /* set reflection classes function entry of the application */
-        /* if method is closure with parameters return output by executing the function */
-        $function = function (string $name, SampleServiceInterface $sampleService) { return ['name' => $name, 'sampleService' => $sampleService]; };
-        $services = [SampleServiceInterface::class => SampleService::class];
-        $parameters = ['name' => 'Amit Sidhpura'];
-        $return = $this->app->runMethod('sample-closure', $function, $services, $parameters);
-        $reflectionClasses = $this->app->getReflections();
-        $this->assertArrayHasKey('sample-closure', $reflectionClasses);
-        $this->assertInstanceOf(\ReflectionFunction::class, $reflectionClasses['sample-closure']);
-        $this->assertSame('Amit Sidhpura', $return['name']);
-        $this->assertInstanceOf(SampleService::class, $return['sampleService']);
-
-        /* if method is constructor with parameters return instance of the class */
-        $services = [SampleServiceForServicesArgumentInterface::class => SampleServiceForServicesArgument::class];
-        $parameters = ['name' => 'Amit Sidhpura'];
-        $sampleServiceHasParameters = $this->app->runMethod(SampleServiceHasParameters::class, '__construct', $services, $parameters);
-        $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleServiceHasParameters);
-        $this->assertSame('Amit Sidhpura', $sampleServiceHasParameters->name);
-        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleServiceHasParameters->sampleServiceForServicesArgument);
-
-        /* if method is class method with parameters return output by executing the function */
-        $this->app->set(SampleServiceHasParameters::class, ['services' => $services, 'parameters' => $parameters]);
-        $return = $this->app->runMethod(SampleServiceHasParameters::class, 'methodHasParameters', $services, $parameters);
-        $this->assertSame('Amit Sidhpura', $return['name']);
-        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $return['sampleServiceForServicesArgument']);
-
-        /* throws parameter not found exception */
-        $this->expectException(MissingParameterException::class);
-        $parameters = [];
-        $this->app->runMethod(SampleServiceHasParameters::class, 'methodHasParameters', $services, $parameters);
-    }
-
-    /* test it can check whether entry is circular dependent */
-    public function testFunctionCheckCircularDependency()
-    {
-        $this->app->checkCircularDependency('sample1-id', 'sample1-entry1');
-        $this->app->checkCircularDependency('sample1-id', 'sample1-entry2');
-        $this->app->checkCircularDependency('sample2-id', 'sample2-entry1');
-        $this->app->checkCircularDependency('sample2-id', 'sample2-entry2');
-        $dependencyStack = ['sample1-id' => ['sample1-entry1', 'sample1-entry2'], 'sample2-id' => ['sample2-entry1', 'sample2-entry2']];
-        $this->assertSame($dependencyStack, $this->app->getDependencyStack());
-        $this->expectException(CircularDependencyException::class);
-        $this->app->checkCircularDependency('sample1-id', 'sample1-entry1');
-    }
-
-    /* test it can flush all modules, tasks, services and instance stack of the application */
-    public function testFunctionFlush()
-    {
-        $this->app->setModule(SampleModule::class);
-        $this->app->setTask(SampleTask::class);
-        $this->app->setService('name', 'Amit Sidhpura');
-        $this->app->setLog('sample-type', 'sample-entry');
-        $this->app->runMethod(SampleService::class);
-        $this->app->checkCircularDependency('sample-stack', 'sample-entry');
-
-        $this->assertSame(['sample-module' => SampleModule::class], $this->app->getModules());
-        $this->assertSame(['sample-task' => SampleTask::class], $this->app->getTasks());
-        $this->assertSame([App::class => $this->app, 'name' => 'Amit Sidhpura'], $this->app->getServices());
-        $logs = $this->app->getLogs();
-        $this->assertSame('sample-entry', end($logs)['entry']);
-        $this->assertArrayHasKey(SampleService::class, $this->app->getReflections());
-        $this->assertSame(['sample-stack' => ['sample-entry']], $this->app->getDependencyStack());
-
-        $this->app->flush();
-
-        $this->assertSame([], $this->app->getModules());
-        $this->assertSame([], $this->app->getTasks());
-        $this->assertSame([], $this->app->getServices());
-        $this->assertSame([], $this->app->getLogs());
-        $this->assertSame([], $this->app->getReflections());
-        $this->assertSame([], $this->app->getDependencyStack());
-    }
-
-    /* test it can check whether given name is valid module, task or event name */
-    public function testFunctionIsNameValid()
-    {
-        $this->assertTrue($this->app->isNameValid('task'));
-        $this->assertTrue($this->app->isNameValid('task-one'));
-        $this->assertTrue($this->app->isNameValid('task-123'));
-        $this->assertFalse($this->app->isNameValid(''));
-        $this->assertFalse($this->app->isNameValid('am'));
-        $this->assertFalse($this->app->isNameValid('Task-one'));
-        $this->assertFalse($this->app->isNameValid('task_one'));
-    }
-
-    /* test it can convert class path to valid name */
-    public function testFunctionClassToName()
-    {
-        $this->assertSame('eraple-core-test-unit-data-stub-sampleservice', $this->app->classToName(SampleService::class));
-        $this->assertSame('test-----testing', $this->app->classToName('test   --- testing'));
-    }
-
-    /* test it can convert delimiters string to camelcase string */
-    public function testFunctionCamelize()
-    {
-        $this->assertSame('taskOne', $this->app->camelize('task-one'));
-        $this->assertSame('taskOne', $this->app->camelize('task_one', '_'));
-        $this->assertSame('taskone', $this->app->camelize('taskone'));
-    }
-
-    /* test it can convert camelcase string to delimiters string */
-    public function testFunctionUncamelize()
-    {
-        $this->assertSame('task-one', $this->app->uncamelize('taskOne'));
-        $this->assertSame('task_one', $this->app->uncamelize('taskOne', '_'));
-        $this->assertSame('taskone', $this->app->uncamelize('taskone'));
-    }
-
-    /* test it can allow run task before and after particular task */
-    public function testExtraRunTaskBeforeAndAfterParticularTask()
-    {
-        $this->app->setTask(SampleTaskHandlesAfterTaskRunEvent::class);
-        $this->app->setTask(SampleTaskHandlesBeforeTaskRunEvent::class);
-        $this->app->setTask(SampleTaskHandlesEvent::class);
-        $data = $this->app->fire('something-happened', ['key' => '(fired)']);
-        $this->assertSame(['key' => '(fired) before on after'], $data);
-    }
-
-    /* test it can allow to replace particular task and also to retain replaced task dependencies */
-    public function testExtraReplaceParticularTask()
-    {
-        $this->app->setTask(SampleTaskHandlesAfterTaskRunEvent::class);
-        $this->app->setTask(SampleTaskHandlesBeforeTaskRunEvent::class);
-        $this->app->setTask(SampleTaskHandlesEvent::class);
-        $this->app->setTask(SampleTaskHandlesReplaceTaskEvent::class);
-        $data = $this->app->fire('something-happened', ['key' => '(fired)']);
-        $this->assertSame(['key' => '(fired) before on replaced after'], $data);
-    }
-
-    /* test it can throw invalid module exception */
-    public function testExtraThrowInvalidModuleException()
-    {
-        $this->expectException(InvalidModuleException::class);
-        $this->app->setModule(NotExtendedAbstractModule::class);
-    }
-
-    /* test it can throw invalid module exception when module name is invalid */
-    public function testExtraThrowInvalidModuleExceptionWhenModuleNameIsInvalid()
-    {
-        $this->expectException(InvalidModuleException::class);
-        $this->app->setModule(InvalidNameModule::class);
-    }
-
-    /* test it can throw invalid task exception */
-    public function testExtraThrowInvalidTaskException()
-    {
-        $this->expectException(InvalidTaskException::class);
-        $this->app->setTask(NotExtendedAbstractTask::class);
-    }
-
-    /* test it can throw invalid task exception when task name is invalid */
-    public function testExtraThrowInvalidTaskExceptionWhenTaskNameIsInvalid()
-    {
-        $this->expectException(InvalidTaskException::class);
-        $this->app->setTask(InvalidNameTask::class);
-    }
-
-    /* test it can throw invalid service exception when entry found but not instantiable */
-    public function testExtraThrowInvalidServiceException()
-    {
-        $this->expectException(InvalidServiceException::class);
-        $this->app->get(SampleServiceInterface::class, '');
-    }
-
-    /* test it can throw invalid task exception */
-    public function testExtraThrowInvalidEventException()
-    {
-        $this->expectException(InvalidEventException::class);
-        $this->app->fire('Invalid Event');
-    }
-
-    /* test it can throw circular dependency exception when class entries exist and are circular dependent */
-    public function testExtraThrowCircularDependencyExceptionWhenClassEntriesExistAndAreCircularDependent()
-    {
-        $this->expectException(CircularDependencyException::class);
-        $this->app->set(ServiceANeedsServiceB::class, []);
-        $this->app->set(ServiceBNeedsServiceC::class, []);
-        $this->app->set(ServiceCNeedsServiceA::class, []);
-        $this->app->get(ServiceANeedsServiceB::class);
-    }
-
-    /* test it can throw circular dependency exception when class entries does not exist and are circular dependent */
-    public function testExtraThrowCircularDependencyExceptionWhenClassEntriesDoesNotExistAndAreCircularDependent()
-    {
-        $this->expectException(CircularDependencyException::class);
-        $this->app->get(ServiceANeedsServiceB::class);
-    }
-
-    /* test it can throw circular dependency exception when alias is circular dependent */
-    public function testExtraThrowCircularDependencyExceptionWhenAliasIsCircularDependent()
-    {
-        $this->expectException(CircularDependencyException::class);
-        $this->app->set('name-alias1', ['alias' => 'name-alias2']);
-        $this->app->set('name-alias2', ['alias' => 'name-alias1']);
-        $this->app->get('name-alias1');
-    }
-
-    /* test it can throw not found exception when entry not found */
-    public function testExtraThrowNotFoundException()
-    {
-        $this->expectException(NotFoundException::class);
-        $this->app->get('name');
-    }
-
-    /* test it can throw missing parameter exception */
-    public function testExtraThrowMissingParameterException()
-    {
-        $this->expectException(MissingParameterException::class);
-        $this->app->set(SampleServiceHasNoTypeParameter::class, []);
-        $this->app->get(SampleServiceHasNoTypeParameter::class);
     }
 
     /* test it can get instance of entry not found but creatable */
@@ -741,5 +411,345 @@ class AppTest extends \PHPUnit\Framework\TestCase
         /* alias and configuration pair */
         $this->app->set('name', 'Amit Sidhpura');
         $this->assertSame('Amit Sidhpura', $this->app->get('name-alias', ['alias' => 'name']));
+    }
+
+    /* test it can throw circular dependency exception when class entries exist and are circular dependent */
+    public function testExtraThrowCircularDependencyExceptionWhenClassEntriesExistAndAreCircularDependent()
+    {
+        $this->expectException(CircularDependencyException::class);
+        $this->app->set(ServiceANeedsServiceB::class, []);
+        $this->app->set(ServiceBNeedsServiceC::class, []);
+        $this->app->set(ServiceCNeedsServiceA::class, []);
+        $this->app->get(ServiceANeedsServiceB::class);
+    }
+
+    /* test it can throw circular dependency exception when class entries does not exist and are circular dependent */
+    public function testExtraThrowCircularDependencyExceptionWhenClassEntriesDoesNotExistAndAreCircularDependent()
+    {
+        $this->expectException(CircularDependencyException::class);
+        $this->app->get(ServiceANeedsServiceB::class);
+    }
+
+    /* test it can throw circular dependency exception when alias is circular dependent */
+    public function testExtraThrowCircularDependencyExceptionWhenAliasIsCircularDependent()
+    {
+        $this->expectException(CircularDependencyException::class);
+        $this->app->set('name-alias1', ['alias' => 'name-alias2']);
+        $this->app->set('name-alias2', ['alias' => 'name-alias1']);
+        $this->app->get('name-alias1');
+    }
+
+    /* test it can throw not found exception when entry not found */
+    public function testExtraThrowNotFoundException()
+    {
+        $this->expectException(NotFoundException::class);
+        $this->app->get('name');
+    }
+
+    /* test it can throw invalid service exception when entry found but not instantiable */
+    public function testExtraThrowInvalidServiceException()
+    {
+        $this->expectException(InvalidServiceException::class);
+        $this->app->get(SampleServiceInterface::class, '');
+    }
+
+    /* test it can fire event */
+    public function testFunctionFire()
+    {
+        /* test sequence of tasks based on event and index */
+        $this->app->setTask(SampleTaskHandlesEventWithHighIndex::class);
+        $this->app->setTask(SampleTaskHandlesEventWithLowIndex::class);
+        $this->app->setTask(SampleTaskHandlesEvent::class);
+        $data = $this->app->fire('something-happened', ['key' => '(fired)']);
+        $this->assertSame(['key' => '(fired) low on high'], $data);
+    }
+
+    /* test it can throw invalid event exception when event name is invalid */
+    public function testExtraThrowInvalidEventException()
+    {
+        $this->expectException(InvalidEventException::class);
+        $this->app->fire('Invalid Event');
+    }
+
+    /* test it can run task */
+    public function testFunctionRunTask()
+    {
+        $this->app->setTask(SampleTaskHandlesEvent::class);
+        $data = $this->app->runTask(SampleTaskHandlesEvent::class, ['key' => '(fired)']);
+        $this->assertSame(['key' => '(fired) on'], $data);
+
+        /* throw circular dependency exception */
+        $this->expectException(CircularDependencyException::class);
+        $this->app->setTask(TaskAFollowsTaskC::class);
+        $this->app->setTask(TaskBFollowsTaskA::class);
+        $this->app->setTask(TaskCFollowsTaskB::class);
+        $this->app->runTask(TaskAFollowsTaskC::class);
+    }
+
+    /* test it can allow to run tasks before and after particular task */
+    public function testExtraRunTasksBeforeAndAfterParticularTask()
+    {
+        $this->app->setTask(SampleTaskHandlesAfterTaskRunEvent::class);
+        $this->app->setTask(SampleTaskHandlesBeforeTaskRunEvent::class);
+        $this->app->setTask(SampleTaskHandlesEvent::class);
+        $data = $this->app->runTask(SampleTaskHandlesEvent::class, ['key' => '(fired)']);
+        $this->assertSame(['key' => '(fired) before on after'], $data);
+    }
+
+    /* test it can allow to replace particular task and also to retain replaced task dependencies */
+    public function testExtraReplaceParticularTask()
+    {
+        $this->app->setTask(SampleTaskHandlesAfterTaskRunEvent::class);
+        $this->app->setTask(SampleTaskHandlesBeforeTaskRunEvent::class);
+        $this->app->setTask(SampleTaskHandlesEvent::class);
+        $this->app->setTask(SampleTaskHandlesReplaceTaskEvent::class);
+        $data = $this->app->runTask(SampleTaskHandlesEvent::class, ['key' => '(fired)']);
+        $this->assertSame(['key' => '(fired) before on replaced after'], $data);
+    }
+
+    /* test it can get modules */
+    public function testFunctionGetModules()
+    {
+        /* test covered in testFunctionSetModule */
+        $this->assertTrue(true);
+    }
+
+    /* test it can get tasks */
+    public function testFunctionGetTasks()
+    {
+        /* set tasks */
+        $this->app->setTask(TaskNameAEventA::class);
+        $this->app->setTask(TaskNameAEventB::class);
+        $this->app->setTask(TaskNameBEventA::class);
+        $this->app->setTask(TaskNameBEventB::class);
+
+        /* all tasks */
+        $allTasks = [
+            'name-a-event-a' => TaskNameAEventA::class,
+            'name-a-event-b' => TaskNameAEventB::class,
+            'name-b-event-a' => TaskNameBEventA::class,
+            'name-b-event-b' => TaskNameBEventB::class
+        ];
+
+        /* test no filters with and */
+        $this->assertSame($allTasks, $this->app->getTasks());
+
+        /* test one filter with and */
+        $tasks = $allTasks;
+        unset($tasks['name-a-event-b']);
+        unset($tasks['name-b-event-b']);
+        $this->assertSame($tasks, $this->app->getTasks(['event' => 'event-a']));
+
+        /* test two filters with and */
+        unset($tasks['name-b-event-a']);
+        $this->assertSame($tasks, $this->app->getTasks(['name' => 'name-a-event-a', 'event' => 'event-a']));
+        $this->assertSame([], $this->app->getTasks(['name' => 'name-a-event-b', 'event' => 'event-a']));
+
+        /* test undefined filter with and */
+        $this->assertSame([], $this->app->getTasks(['name' => 'name-a-event-c', 'event' => 'event-c']));
+
+        /* test no filters with or */
+        $this->assertSame($allTasks, $this->app->getTasks([], 'or'));
+
+        /* test one filter with or */
+        $tasks = $allTasks;
+        unset($tasks['name-a-event-b']);
+        unset($tasks['name-b-event-b']);
+        $this->assertSame($tasks, $this->app->getTasks(['event' => 'event-a'], 'or'));
+
+        /* test two filters with or */
+        $tasks = $allTasks;
+        unset($tasks['name-b-event-b']);
+        $this->assertSame($tasks, $this->app->getTasks(['name' => 'name-a-event-b', 'event' => 'event-a'], 'or', 'name', 'asc'));
+
+        /* test undefined filter with or */
+        $this->assertSame([], $this->app->getTasks(['name' => 'name-a-event-c', 'event' => 'event-c'], 'or'));
+
+        /* test tasks in asc order */
+        $this->assertSame($allTasks, $this->app->getTasks([], 'and', 'name', 'asc'));
+
+        /* test tasks in dsc order */
+        $this->assertSame(array_reverse($allTasks), $this->app->getTasks([], 'and', 'name', 'dsc'));
+    }
+
+    /* test it can get services */
+    public function testFunctionGetServices()
+    {
+        /* test covered in testFunctionSet */
+        $this->assertTrue(true);
+    }
+
+    /* test it can get logs */
+    public function testFunctionGetLogs()
+    {
+        /* test covered in testFunctionSetLog */
+        $this->assertTrue(true);
+    }
+
+    /* test it can get reflection classes */
+    public function testFunctionGetReflections()
+    {
+        $this->app->runMethod(SampleService::class);
+        $reflectionClasses = $this->app->getReflections();
+        $this->assertArrayHasKey(SampleService::class, $reflectionClasses);
+        $this->assertInstanceOf(\ReflectionClass::class, $reflectionClasses[SampleService::class]);
+    }
+
+    /* test it can get dependency stack */
+    public function testFunctionGetDependencyStack()
+    {
+        /* test covered in testFunctionCheckCircularDependency */
+        $this->assertTrue(true);
+    }
+
+    /* test it can get root path */
+    public function testFunctionGetRootPath()
+    {
+        $this->assertSame($this->rootPath . DIRECTORY_SEPARATOR, $this->app->getRootPath());
+    }
+
+    /* test it can get local path */
+    public function testFunctionGetLocalPath()
+    {
+        $this->assertSame($this->rootPath . DIRECTORY_SEPARATOR . 'local' . DIRECTORY_SEPARATOR, $this->app->getLocalPath());
+    }
+
+    /* test it can get vendor path */
+    public function testFunctionGetVendorPath()
+    {
+        $this->assertSame($this->rootPath . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR, $this->app->getVendorPath());
+    }
+
+    /* test it can run method */
+    public function testFunctionRunMethod()
+    {
+        /* method is not string or closure */
+        $this->assertNull($this->app->runMethod('some-class', 2000));
+
+        /* method is string and id not class */
+        $this->assertNull($this->app->runMethod('not-class', 'some-method'));
+
+        /* set reflection classes entry of the application */
+        /* if method is constructor and constructor does not exist return instance of the class */
+        $sampleService = $this->app->runMethod(SampleService::class);
+        $reflectionClasses = $this->app->getReflections();
+        $this->assertArrayHasKey(SampleService::class, $reflectionClasses);
+        $this->assertInstanceOf(\ReflectionClass::class, $reflectionClasses[SampleService::class]);
+        $this->assertInstanceOf(SampleService::class, $sampleService);
+
+        /* set reflection classes function entry of the application */
+        /* if method is closure with parameters return output by executing the function */
+        $function = function (string $name, SampleServiceInterface $sampleService) { return ['name' => $name, 'sampleService' => $sampleService]; };
+        $services = [SampleServiceInterface::class => SampleService::class];
+        $parameters = ['name' => 'Amit Sidhpura'];
+        $return = $this->app->runMethod('sample-closure', $function, $services, $parameters);
+        $reflectionClasses = $this->app->getReflections();
+        $this->assertArrayHasKey('sample-closure', $reflectionClasses);
+        $this->assertInstanceOf(\ReflectionFunction::class, $reflectionClasses['sample-closure']);
+        $this->assertSame('Amit Sidhpura', $return['name']);
+        $this->assertInstanceOf(SampleService::class, $return['sampleService']);
+
+        /* if method is constructor with parameters return instance of the class */
+        $services = [SampleServiceForServicesArgumentInterface::class => SampleServiceForServicesArgument::class];
+        $parameters = ['name' => 'Amit Sidhpura'];
+        $sampleServiceHasParameters = $this->app->runMethod(SampleServiceHasParameters::class, '__construct', $services, $parameters);
+        $this->assertInstanceOf(SampleServiceHasParameters::class, $sampleServiceHasParameters);
+        $this->assertSame('Amit Sidhpura', $sampleServiceHasParameters->name);
+        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $sampleServiceHasParameters->sampleServiceForServicesArgument);
+
+        /* if method is class method with parameters return output by executing the function */
+        $this->app->set(SampleServiceHasParameters::class, ['services' => $services, 'parameters' => $parameters]);
+        $return = $this->app->runMethod(SampleServiceHasParameters::class, 'methodHasParameters', $services, $parameters);
+        $this->assertSame('Amit Sidhpura', $return['name']);
+        $this->assertInstanceOf(SampleServiceForServicesArgument::class, $return['sampleServiceForServicesArgument']);
+
+        /* throws parameter not found exception */
+        $this->expectException(MissingParameterException::class);
+        $parameters = [];
+        $this->app->runMethod(SampleServiceHasParameters::class, 'methodHasParameters', $services, $parameters);
+    }
+
+    /* test it can throw missing parameter exception */
+    public function testExtraThrowMissingParameterException()
+    {
+        $this->expectException(MissingParameterException::class);
+        $this->app->set(SampleServiceHasNoTypeParameter::class, []);
+        $this->app->get(SampleServiceHasNoTypeParameter::class);
+    }
+
+    /* test it can check whether entry is circular dependent */
+    public function testFunctionCheckCircularDependency()
+    {
+        $this->app->checkCircularDependency('sample1-id', 'sample1-entry1');
+        $this->app->checkCircularDependency('sample1-id', 'sample1-entry2');
+        $this->app->checkCircularDependency('sample2-id', 'sample2-entry1');
+        $this->app->checkCircularDependency('sample2-id', 'sample2-entry2');
+        $dependencyStack = ['sample1-id' => ['sample1-entry1', 'sample1-entry2'], 'sample2-id' => ['sample2-entry1', 'sample2-entry2']];
+        $this->assertSame($dependencyStack, $this->app->getDependencyStack());
+        $this->expectException(CircularDependencyException::class);
+        $this->app->checkCircularDependency('sample1-id', 'sample1-entry1');
+    }
+
+    /* test it can flush all modules, tasks, services and instance stack of the application */
+    public function testFunctionFlush()
+    {
+        $this->app->setModule(SampleModule::class);
+        $this->app->setTask(SampleTask::class);
+        $this->app->setService('name', 'Amit Sidhpura');
+        $this->app->setLog('sample-type', 'sample-entry');
+        $this->app->runMethod(SampleService::class);
+        $this->app->checkCircularDependency('sample-stack', 'sample-entry');
+
+        $this->assertSame(['sample-module' => SampleModule::class], $this->app->getModules());
+        $this->assertSame(['sample-task' => SampleTask::class], $this->app->getTasks());
+        $this->assertSame([App::class => $this->app, 'name' => 'Amit Sidhpura'], $this->app->getServices());
+        $logs = $this->app->getLogs();
+        $this->assertSame('sample-entry', end($logs)['entry']);
+        $this->assertArrayHasKey(SampleService::class, $this->app->getReflections());
+        $this->assertSame(['sample-stack' => ['sample-entry']], $this->app->getDependencyStack());
+
+        $this->app->flush();
+
+        $this->assertSame([], $this->app->getModules());
+        $this->assertSame([], $this->app->getTasks());
+        $this->assertSame([], $this->app->getServices());
+        $this->assertSame([], $this->app->getLogs());
+        $this->assertSame([], $this->app->getReflections());
+        $this->assertSame([], $this->app->getDependencyStack());
+    }
+
+    /* test it can check whether given name is valid module, task or event name */
+    public function testFunctionIsNameValid()
+    {
+        $this->assertTrue($this->app->isNameValid('task'));
+        $this->assertTrue($this->app->isNameValid('task-one'));
+        $this->assertTrue($this->app->isNameValid('task-123'));
+        $this->assertFalse($this->app->isNameValid(''));
+        $this->assertFalse($this->app->isNameValid('am'));
+        $this->assertFalse($this->app->isNameValid('Task-one'));
+        $this->assertFalse($this->app->isNameValid('task_one'));
+    }
+
+    /* test it can convert class path to valid name */
+    public function testFunctionClassToName()
+    {
+        $this->assertSame('eraple-core-test-unit-data-stub-sampleservice', $this->app->classToName(SampleService::class));
+        $this->assertSame('test-----testing', $this->app->classToName('test   --- testing'));
+    }
+
+    /* test it can convert delimiters string to camelcase string */
+    public function testFunctionCamelize()
+    {
+        $this->assertSame('taskOne', $this->app->camelize('task-one'));
+        $this->assertSame('taskOne', $this->app->camelize('task_one', '_'));
+        $this->assertSame('taskone', $this->app->camelize('taskone'));
+    }
+
+    /* test it can convert camelcase string to delimiters string */
+    public function testFunctionUncamelize()
+    {
+        $this->assertSame('task-one', $this->app->uncamelize('taskOne'));
+        $this->assertSame('task_one', $this->app->uncamelize('taskOne', '_'));
+        $this->assertSame('taskone', $this->app->uncamelize('taskone'));
     }
 }
