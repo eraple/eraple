@@ -23,6 +23,7 @@ use Eraple\Core\Test\Unit\Data\Stub\NotExtendedAbstractTask;
 use Eraple\Core\Test\Unit\Data\Stub\SampleServiceInterface;
 use Eraple\Core\Test\Unit\Data\Stub\SampleService;
 use Eraple\Core\Test\Unit\Data\Stub\SampleServiceHasParameters;
+use Eraple\Core\Test\Unit\Data\Stub\SampleServiceHasNoTypeParameter;
 use Eraple\Core\Test\Unit\Data\Stub\SampleServiceForServicesArgumentInterface;
 use Eraple\Core\Test\Unit\Data\Stub\SampleServiceForServicesArgument;
 use Eraple\Core\Test\Unit\Data\Stub\ServiceANeedsServiceB;
@@ -37,6 +38,10 @@ use Eraple\Core\Test\Unit\Data\Stub\SampleTaskHandlesReplaceTaskEvent;
 use Eraple\Core\Test\Unit\Data\Stub\TaskAFollowsTaskC;
 use Eraple\Core\Test\Unit\Data\Stub\TaskBFollowsTaskA;
 use Eraple\Core\Test\Unit\Data\Stub\TaskCFollowsTaskB;
+use Eraple\Core\Test\Unit\Data\Stub\TaskNameAEventA;
+use Eraple\Core\Test\Unit\Data\Stub\TaskNameAEventB;
+use Eraple\Core\Test\Unit\Data\Stub\TaskNameBEventA;
+use Eraple\Core\Test\Unit\Data\Stub\TaskNameBEventB;
 
 class AppTest extends \PHPUnit\Framework\TestCase
 {
@@ -104,6 +109,9 @@ class AppTest extends \PHPUnit\Framework\TestCase
     {
         $this->app->setModule(SampleModule::class);
         $this->assertSame(['sample-module' => SampleModule::class], $this->app->getModules());
+        $this->assertSame('sample-module', SampleModule::getName());
+        $this->assertSame('1.0.0', SampleModule::getVersion());
+        $this->assertSame('Sample module description.', SampleModule::getDescription());
     }
 
     /* test it can set task */
@@ -111,6 +119,8 @@ class AppTest extends \PHPUnit\Framework\TestCase
     {
         $this->app->setTask(SampleTask::class);
         $this->assertSame(['sample-task' => SampleTask::class], $this->app->getTasks());
+        $this->assertSame('sample-task', SampleTask::getName());
+        $this->assertSame('Sample task description.', SampleTask::getDescription());
     }
 
     /* test it can set service */
@@ -155,35 +165,42 @@ class AppTest extends \PHPUnit\Framework\TestCase
     public function testFunctionSet()
     {
         /* set key-value pair */
+        $this->app->flush();
         $this->app->set('name', 'Amit Sidhpura');
-        $this->assertSame([App::class => $this->app, 'name' => 'Amit Sidhpura'], $this->app->getServices());
+        $this->assertSame(['name' => 'Amit Sidhpura'], $this->app->getServices());
+        $this->assertSame('Amit Sidhpura', $this->app->get('name'));
 
         /* set key-config pair */
         $this->app->flush();
         $this->app->set('name', ['instance' => 'Amit Sidhpura']);
         $this->assertSame(['name' => ['instance' => 'Amit Sidhpura']], $this->app->getServices());
+        $this->assertSame('Amit Sidhpura', $this->app->get('name'));
 
         /* set class-instance pair */
         $this->app->flush();
         $instance = new SampleService();
         $this->app->set(SampleService::class, $instance);
         $this->assertSame([SampleService::class => $instance], $this->app->getServices());
+        $this->assertSame($instance, $this->app->get(SampleService::class));
 
         /* set class-config pair */
         $this->app->flush();
         $this->app->set(SampleService::class, []);
         $this->assertSame([SampleService::class => []], $this->app->getServices());
+        $this->assertInstanceOf(SampleService::class, $this->app->get(SampleService::class));
 
         /* set interface-instance pair */
         $this->app->flush();
         $instance = new SampleService();
         $this->app->set(SampleServiceInterface::class, $instance);
         $this->assertSame([SampleServiceInterface::class => $instance], $this->app->getServices());
+        $this->assertSame($instance, $this->app->get(SampleServiceInterface::class));
 
         /* set interface-class pair */
         $this->app->flush();
         $this->app->set(SampleServiceInterface::class, SampleService::class);
         $this->assertSame([SampleServiceInterface::class => SampleService::class], $this->app->getServices());
+        $this->assertInstanceOf(SampleService::class, $this->app->get(SampleServiceInterface::class));
 
         /* set interface-config pair */
         $this->app->flush();
@@ -192,8 +209,10 @@ class AppTest extends \PHPUnit\Framework\TestCase
 
         /* set alias-config pair */
         $this->app->flush();
+        $this->app->set('name', 'Amit Sidhpura');
         $this->app->set('name-alias', ['alias' => 'name']);
-        $this->assertSame(['name-alias' => ['alias' => 'name']], $this->app->getServices());
+        $this->assertSame(['name' => 'Amit Sidhpura', 'name-alias' => ['alias' => 'name']], $this->app->getServices());
+        $this->assertSame('Amit Sidhpura', $this->app->get('name-alias'));
     }
 
     /* test it can get entry */
@@ -234,8 +253,59 @@ class AppTest extends \PHPUnit\Framework\TestCase
     /* test it can get tasks */
     public function testFunctionGetTasks()
     {
-        /* test covered in testFunctionSetTask */
-        $this->assertTrue(true);
+        /* set tasks */
+        $this->app->setTask(TaskNameAEventA::class);
+        $this->app->setTask(TaskNameAEventB::class);
+        $this->app->setTask(TaskNameBEventA::class);
+        $this->app->setTask(TaskNameBEventB::class);
+
+        /* all tasks */
+        $allTasks = [
+            'name-a-event-a' => TaskNameAEventA::class,
+            'name-a-event-b' => TaskNameAEventB::class,
+            'name-b-event-a' => TaskNameBEventA::class,
+            'name-b-event-b' => TaskNameBEventB::class
+        ];
+
+        /* test no filters with and */
+        $this->assertSame($allTasks, $this->app->getTasks());
+
+        /* test one filter with and */
+        $tasks = $allTasks;
+        unset($tasks['name-a-event-b']);
+        unset($tasks['name-b-event-b']);
+        $this->assertSame($tasks, $this->app->getTasks(['event' => 'event-a']));
+
+        /* test two filters with and */
+        unset($tasks['name-b-event-a']);
+        $this->assertSame($tasks, $this->app->getTasks(['name' => 'name-a-event-a', 'event' => 'event-a']));
+        $this->assertSame([], $this->app->getTasks(['name' => 'name-a-event-b', 'event' => 'event-a']));
+
+        /* test undefined filter with and */
+        $this->assertSame([], $this->app->getTasks(['name' => 'name-a-event-c', 'event' => 'event-c']));
+
+        /* test no filters with or */
+        $this->assertSame($allTasks, $this->app->getTasks([], 'or'));
+
+        /* test one filter with or */
+        $tasks = $allTasks;
+        unset($tasks['name-a-event-b']);
+        unset($tasks['name-b-event-b']);
+        $this->assertSame($tasks, $this->app->getTasks(['event' => 'event-a'], 'or'));
+
+        /* test two filters with or */
+        $tasks = $allTasks;
+        unset($tasks['name-b-event-b']);
+        $this->assertSame($tasks, $this->app->getTasks(['name' => 'name-a-event-b', 'event' => 'event-a'], 'or', 'name', 'asc'));
+
+        /* test undefined filter with or */
+        $this->assertSame([], $this->app->getTasks(['name' => 'name-a-event-c', 'event' => 'event-c'], 'or'));
+
+        /* test tasks in asc order */
+        $this->assertSame($allTasks, $this->app->getTasks([], 'and', 'name', 'asc'));
+
+        /* test tasks in dsc order */
+        $this->assertSame(array_reverse($allTasks), $this->app->getTasks([], 'and', 'name', 'dsc'));
     }
 
     /* test it can get services */
@@ -432,6 +502,48 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->assertSame(['key' => '(fired) before on replaced after'], $data);
     }
 
+    /* test it can throw invalid module exception */
+    public function testExtraThrowInvalidModuleException()
+    {
+        $this->expectException(InvalidModuleException::class);
+        $this->app->setModule(NotExtendedAbstractModule::class);
+    }
+
+    /* test it can throw invalid module exception when module name is invalid */
+    public function testExtraThrowInvalidModuleExceptionWhenModuleNameIsInvalid()
+    {
+        $this->expectException(InvalidModuleException::class);
+        $this->app->setModule(InvalidNameModule::class);
+    }
+
+    /* test it can throw invalid task exception */
+    public function testExtraThrowInvalidTaskException()
+    {
+        $this->expectException(InvalidTaskException::class);
+        $this->app->setTask(NotExtendedAbstractTask::class);
+    }
+
+    /* test it can throw invalid task exception when task name is invalid */
+    public function testExtraThrowInvalidTaskExceptionWhenTaskNameIsInvalid()
+    {
+        $this->expectException(InvalidTaskException::class);
+        $this->app->setTask(InvalidNameTask::class);
+    }
+
+    /* test it can throw invalid service exception when entry found but not instantiable */
+    public function testExtraThrowInvalidServiceException()
+    {
+        $this->expectException(InvalidServiceException::class);
+        $this->app->get(SampleServiceInterface::class, '');
+    }
+
+    /* test it can throw invalid task exception */
+    public function testExtraThrowInvalidEventException()
+    {
+        $this->expectException(InvalidEventException::class);
+        $this->app->fire('Invalid Event');
+    }
+
     /* test it can throw circular dependency exception when class entries exist and are circular dependent */
     public function testExtraThrowCircularDependencyExceptionWhenClassEntriesExistAndAreCircularDependent()
     {
@@ -465,11 +577,12 @@ class AppTest extends \PHPUnit\Framework\TestCase
         $this->app->get('name');
     }
 
-    /* test it can throw invalid service exception when entry found but not instantiable */
-    public function testExtraThrowInvalidServiceException()
+    /* test it can throw missing parameter exception */
+    public function testExtraThrowMissingParameterException()
     {
-        $this->expectException(InvalidServiceException::class);
-        $this->app->get(SampleServiceInterface::class, '');
+        $this->expectException(MissingParameterException::class);
+        $this->app->set(SampleServiceHasNoTypeParameter::class, []);
+        $this->app->get(SampleServiceHasNoTypeParameter::class);
     }
 
     /* test it can get instance of entry not found but creatable */
