@@ -201,11 +201,11 @@ class AppTest extends \PHPUnit\Framework\TestCase
         /* set key-value pair with value as closure with arguments */
         $this->app->flush();
         $this->app->set('name', [
-            'instance'   => function (string $name, SampleServiceForServicesArgumentInterface $sampleServiceForServicesArgument) { return $name; },
+            'instance'   => function (string $name, SampleServiceForServicesArgumentInterface $sampleServiceForServicesArgument) { },
             'services'   => [SampleServiceForServicesArgumentInterface::class => SampleServiceForServicesArgument::class],
             'parameters' => ['name' => 'Amit Sidhpura']
         ]);
-        $this->assertSame('Amit Sidhpura', $this->app->get('name'));
+        $this->assertSame(null, $this->app->get('name'));
 
         /* set key-config pair */
         $this->app->flush();

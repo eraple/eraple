@@ -515,14 +515,16 @@ class App implements ContainerInterface
 
         /* check whether service is valid */
         $instance = null;
+        $valid = false;
         $serviceTypes = ['KeyValue', 'KeyConfig', 'ClassInstance', 'ClassConfig', 'InterfaceInstance', 'InterfaceClass', 'InterfaceConfig', 'AliasConfig'];
         foreach ($serviceTypes as $serviceType) if ($this->{'is' . $serviceType . 'Pair'}($id, $entry)) {
+            $valid = true;
             $instance = $this->{'getBy' . $serviceType . 'Pair'}($id, $entry);
             break;
         }
 
-        /* if entry is not null and prepared entry is null */
-        if (is_null($instance)) throw new InvalidServiceException(sprintf('Service with id "%s" is invalid', $id));
+        /* throw exception if entry not valid */
+        if (!$valid) throw new InvalidServiceException(sprintf('Service with id "%s" is invalid', $id));
 
         /* set get after log */
         $this->setLog('get', 'after:' . $id);
