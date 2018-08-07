@@ -508,7 +508,7 @@ class App implements ContainerInterface
         /* entry not found and not instantiable */
         if (!$this->has($id) && is_null($entry)) throw new NotFoundException(sprintf('Service with id "%s" not found', $id));
 
-        /* overwrite set entry with arg entry */
+        /* override set entry with arg entry */
         $override = !is_null($entry) && key_exists($id, $this->services);
         if ($override && is_array($entry) && is_array($this->services[$id])) $entry = array_merge($this->services[$id], $entry);
         elseif (!$override && key_exists($id, $this->services)) $entry = $this->services[$id];
